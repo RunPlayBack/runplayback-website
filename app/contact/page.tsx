@@ -15,7 +15,6 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
       <div className="legacy-page">
         <div className="page-kicker">
           <span>Contact</span>
-          <span>⌄</span>
         </div>
         <iframe
           className="video-embed"

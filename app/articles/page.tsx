@@ -105,7 +105,6 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
       <div className="legacy-page">
         <div className="page-kicker">
           <span>Reviews</span>
-          <span>⌄</span>
         </div>
         {featuredArticle && currentPage === 1 ? (
           <article className="featured-article">

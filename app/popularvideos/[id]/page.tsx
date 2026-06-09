@@ -50,7 +50,6 @@ export default async function PopularVideoDetailPage({
       <div className="legacy-page">
         <div className="page-kicker">
           <span>Popular Videos</span>
-          <span>⌄</span>
         </div>
         <iframe
           className="video-embed"

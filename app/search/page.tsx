@@ -37,7 +37,6 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       <div className="legacy-page">
         <div className="page-kicker">
           <span>Navigation</span>
-          <span>⌄</span>
         </div>
         <form action="/search" className="search-box" method="get">
           <span className="search-icon">⌕</span>

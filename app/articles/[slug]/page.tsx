@@ -814,7 +814,6 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
       <article className="legacy-page">
         <div className="page-kicker">
           <span>Review</span>
-          <span>⌄</span>
         </div>
         {article.featuredImageUrl ? (
           <img className="hero-image" src={article.featuredImageUrl} alt="" />

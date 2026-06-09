@@ -111,17 +111,9 @@ button {
   display: flex;
   font-size: clamp(1.05rem, 3vw, 1.35rem);
   font-weight: 900;
-  justify-content: space-between;
   letter-spacing: 0.14em;
   margin: 12px 0 34px;
   text-transform: uppercase;
-}
-
-.page-kicker span:last-child {
-  color: var(--ink);
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: 0;
 }
 
 .hero-image {

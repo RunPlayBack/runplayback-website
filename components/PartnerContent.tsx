@@ -20,7 +20,6 @@ export async function PartnerContent({ error, sent }: PartnerContentProps) {
       <div className="legacy-page">
         <div className="page-kicker">
           <span>Partner</span>
-          <span>⌄</span>
         </div>
         <iframe
           className="video-embed"

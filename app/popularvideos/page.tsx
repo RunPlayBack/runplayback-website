@@ -9,7 +9,6 @@ export default async function PopularVideosPage() {
       <div className="legacy-page">
         <div className="page-kicker">
           <span>Popular Videos</span>
-          <span>⌄</span>
         </div>
         <div className="video-grid">
           {videos.map((video) => (
