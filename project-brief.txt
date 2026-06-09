@@ -1,0 +1,262 @@
+RunPlayBack Website Rebuild
+
+Goal:
+Rebuild runplayback.com as a custom website hosted on Vercel, using Supabase for article drafts, YouTube video imports, affiliate links, and publishing workflow.
+
+Main pages:
+- Home
+- Partner
+- Articles
+- Popular Videos
+- Contact
+
+Main feature:
+Turn each RunPlayBack YouTube video into a written SEO article using the video captions, YouTube description, affiliate links, and RPB Writing Style.
+
+Workflow:
+1. Import YouTube video.
+2. Pull title, description, thumbnail, captions, and links.
+3. Generate article draft.
+4. Save article as draft.
+5. Review and edit article.
+6. Publish article to the website.
+
+Website Navigation:
+- Home
+- Partner
+- Articles
+- Popular Videos
+- Contact
+
+Home Page:
+Introduce RunPlayBack as an EV lifestyle channel focused on electric bikes, scooters, mini bikes, batteries, accessories, and real-world tech tips.
+
+Partner Page:
+Explain how brands can collaborate with RunPlayBack for product reviews, sponsored videos, affiliate partnerships, and usage rights.
+
+Articles Page:
+A searchable library of written articles created from RunPlayBack YouTube videos.
+
+Popular Videos Page:
+Show selected popular RunPlayBack videos with thumbnails, titles, short descriptions, and embedded YouTube links.
+
+Contact Page:
+Simple contact form for brand partnerships, viewer questions, and media inquiries.
+
+Article Workflow:
+- Admin imports a YouTube video.
+- App pulls video title, thumbnail, publish date, description, captions, and video URL.
+- App extracts affiliate links and hyperlinks from the YouTube description.
+- App creates an article draft in the RPB Writing Style.
+- Draft is saved in Supabase.
+- Admin can review, edit, and fix typos before publishing.
+- Published articles appear on the Articles page.
+- Each article embeds the original YouTube video.
+- Each article includes links from the original YouTube description.
+
+MVP (Version 1)
+
+Admin Dashboard:
+- Login
+- View imported videos
+- View article drafts
+- Edit article drafts
+- Publish articles
+- Unpublish articles
+
+YouTube Import:
+- Connect to RunPlayBack YouTube channel
+- Import video metadata
+- Import video description
+- Import video thumbnail
+- Import video captions
+
+Article Features:
+- Title
+- Featured image
+- Embedded YouTube video
+- Article content
+- Affiliate links section
+- Related articles section
+
+SEO:
+- SEO title
+- SEO description
+- Article slug
+- XML sitemap
+- Open Graph image support
+- Google Search Console support
+
+Hosting:
+- Next.js
+- Vercel
+- Supabase
+
+Architecture Map
+
+GoDaddy:
+- Keeps ownership of runplayback.com
+- Domain will point to Vercel when the new site is ready
+
+Vercel:
+- Hosts the new RunPlayBack website
+- Runs the Next.js app
+- Handles public website pages and admin dashboard
+
+Supabase:
+- Stores article drafts
+- Stores published articles
+- Stores imported YouTube video data
+- Stores affiliate links
+- Handles admin login
+
+YouTube API:
+- Pulls video title
+- Pulls video description
+- Pulls thumbnail
+- Pulls captions when available
+- Pulls video URL
+
+AI Article Generator:
+- Turns YouTube captions into RPB-style articles
+- Keeps the original meaning of the video
+- Formats the article for Google SEO
+- Saves the draft for review before publishing
+
+Codex:
+- Builds and edits the codebase
+- Helps create the Next.js app
+- Helps connect Vercel, Supabase, and YouTube
+
+Supabase Database Tables
+
+videos:
+- id
+- youtube_video_id
+- title
+- description
+- thumbnail_url
+- video_url
+- published_at
+- captions_text
+- created_at
+
+articles:
+- id
+- video_id
+- title
+- slug
+- seo_title
+- seo_description
+- featured_image_url
+- content
+- status: draft or published
+- published_at
+- created_at
+- updated_at
+
+affiliate_links:
+- id
+- video_id
+- article_id
+- label
+- url
+- created_at
+
+admins:
+- id
+- email
+- created_at
+
+Admin Dashboard Pages
+
+/admin/login:
+- Admin login page
+
+/admin:
+- Dashboard overview
+- Shows total videos
+- Shows draft articles
+- Shows published articles
+
+/admin/videos:
+- List imported YouTube videos
+- Button to import a new YouTube video
+
+/admin/articles:
+- List all article drafts and published articles
+
+/admin/articles/[id]:
+- Edit article title
+- Edit article slug
+- Edit SEO title
+- Edit SEO description
+- Edit article content
+- Review affiliate links
+- Save draft
+- Publish article
+- Unpublish article
+
+RunPlayBack Article Generator Rules
+
+Goal:
+Convert YouTube video captions into a readable article that sounds like RunPlayBack.
+
+Writing Style:
+- Friendly
+- Casual
+- Educational
+- No corporate jargon
+- No hype language
+- No clickbait
+- Honest observations
+- Real-world riding experience
+- Explain technical information in simple terms
+
+Article Structure:
+
+1. Introduction
+- Explain what product is being reviewed
+- Explain who it is for
+
+2. First Impressions
+- Initial thoughts
+- Design
+- Build quality
+
+3. Technical Specifications
+- Battery
+- Motor
+- Controller
+- Suspension
+- Brakes
+- Tires
+- Weight
+- Range
+
+4. Real World Experience
+- Ride quality
+- Comfort
+- Performance
+- Handling
+
+5. Pros
+- Bullet list
+
+6. Cons
+- Bullet list
+
+7. Final Thoughts
+- Summary
+- Who should buy it
+- Who should skip it
+
+8. Video
+- Embedded YouTube video
+
+9. Links
+- Affiliate links
+- Manufacturer links
+
+First build goal:
+Create the basic Next.js website with public pages, admin dashboard pages, Supabase connection, and placeholder article data before connecting the YouTube API.
