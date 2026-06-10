@@ -59,7 +59,6 @@ export function AdminLoginForm() {
         <input
           autoComplete="current-password"
           onChange={(event) => setPassword(event.target.value)}
-          placeholder="Password"
           required
           type="password"
           value={password}
