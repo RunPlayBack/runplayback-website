@@ -19,16 +19,19 @@ function redirectWithError(path: string, error: unknown): never {
 
 type ArticleImageSourceRow = {
   content: string;
+  featured_image_url: string | null;
   slug: string;
   title: string;
   videos:
     | {
         description: string | null;
         title: string;
+        youtube_video_id: string | null;
       }
     | Array<{
         description: string | null;
         title: string;
+        youtube_video_id: string | null;
       }>
     | null;
 };
@@ -115,7 +118,7 @@ export async function addProductImagesToArticle(articleId: string) {
 
   const { data: article, error: articleError } = await supabase
     .from("articles")
-    .select("content,slug,title,videos(description,title)")
+    .select("content,featured_image_url,slug,title,videos(description,title,youtube_video_id)")
     .eq("id", articleId)
     .single();
 
@@ -146,7 +149,10 @@ export async function addProductImagesToArticle(articleId: string) {
   const { error } = await supabase
     .from("articles")
     .update({
-      content: insertArticleImages(sourceArticle.content, images),
+      content: insertArticleImages(sourceArticle.content, images, {
+        featuredImageUrl: sourceArticle.featured_image_url,
+        youtubeVideoId: video?.youtube_video_id,
+      }),
       updated_at: new Date().toISOString(),
     })
     .eq("id", articleId);

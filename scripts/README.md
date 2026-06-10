@@ -114,3 +114,24 @@ unless `--publish` is included.
 
 YouTube Shorts are skipped automatically. The script only creates drafts for videos
 that are at least 60 seconds long.
+
+## Repair Missing Article Product Images
+
+If published reviews are missing the inline product image after the first paragraph,
+scan the published reviews without changing anything:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run repair:article-images
+```
+
+Apply the repairs:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run repair:article-images -- --apply
+```
+
+The repair skips reviews that already have a real product image, removes duplicate
+YouTube thumbnail images from the body, and inserts the best product image it can find
+from the saved official product links.

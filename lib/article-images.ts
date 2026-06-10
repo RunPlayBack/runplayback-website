@@ -12,6 +12,11 @@ type FindArticleImageCandidateOptions = {
   title: string;
 };
 
+type InsertArticleImagesOptions = {
+  featuredImageUrl?: string | null;
+  youtubeVideoId?: string | null;
+};
+
 type GoogleImageSearchResponse = {
   items?: Array<{
     image?: {
@@ -30,8 +35,6 @@ const blockedSourceHosts = [
   "tiktok.com",
   "x.com",
   "twitter.com",
-  "amazon.com",
-  "amzn.to",
   "ebay.com",
   "walmart.com",
 ];
@@ -57,6 +60,38 @@ function getImageKey(url: string) {
   } catch {
     return url;
   }
+}
+
+function getYouTubeThumbnailVideoId(url: string) {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
+
+    if (!["img.youtube.com", "i.ytimg.com"].includes(host)) {
+      return "";
+    }
+
+    return parsed.pathname.match(/\/vi\/([A-Za-z0-9_-]{11})\//)?.[1] || "";
+  } catch {
+    return "";
+  }
+}
+
+function isDuplicateThumbnailImage(
+  url: string,
+  { featuredImageUrl = "", youtubeVideoId = "" }: InsertArticleImagesOptions,
+) {
+  const imageVideoId = getYouTubeThumbnailVideoId(url);
+
+  if (
+    imageVideoId &&
+    (imageVideoId === youtubeVideoId ||
+      imageVideoId === getYouTubeThumbnailVideoId(featuredImageUrl || ""))
+  ) {
+    return true;
+  }
+
+  return Boolean(featuredImageUrl && getImageKey(url) === getImageKey(featuredImageUrl));
 }
 
 function uniqueImageUrls(values: string[]) {
@@ -106,7 +141,6 @@ function isUsableImageUrl(url: string) {
       parsed.protocol.startsWith("http") &&
       (!requestedWidth || requestedWidth >= 600) &&
       !host.endsWith("facebook.com") &&
-      !host.endsWith("m.media-amazon.com") &&
       !url.includes("{") &&
       !url.includes("}") &&
       !url.toLowerCase().includes("%7b") &&
@@ -466,8 +500,11 @@ export async function findArticleImageCandidates({
 export function insertArticleImages(
   content: string,
   images: ArticleImageCandidate[],
+  options: InsertArticleImagesOptions = {},
 ) {
-  const selectedImages = images.slice(0, 1);
+  const selectedImages = images
+    .filter((image) => !isDuplicateThumbnailImage(image.url, options))
+    .slice(0, 1);
 
   if (!selectedImages.length) {
     return content;

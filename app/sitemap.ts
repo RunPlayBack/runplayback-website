@@ -8,8 +8,8 @@ const siteUrl = "https://runplayback.com";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages = [
     "",
-    "/partner",
     "/articles",
+    "/partner",
     "/popularvideos",
     "/search",
     "/contact",

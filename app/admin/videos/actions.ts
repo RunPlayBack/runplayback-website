@@ -216,7 +216,10 @@ export async function generateDraftArticleFromVideo(videoId: string) {
     limit: 2,
     title: video.title,
   });
-  const contentWithImages = insertArticleImages(draft.content, articleImages);
+  const contentWithImages = insertArticleImages(draft.content, articleImages, {
+    featuredImageUrl: video.thumbnail_url,
+    youtubeVideoId: video.youtube_video_id,
+  });
   const slug = `${draft.slug}-${video.youtube_video_id}`;
 
   const { data: article, error: articleError } = await supabase

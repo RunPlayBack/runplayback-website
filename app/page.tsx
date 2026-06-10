@@ -1,5 +1,5 @@
-import { PartnerContent } from "@/components/PartnerContent";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return <PartnerContent />;
+  redirect("/articles");
 }

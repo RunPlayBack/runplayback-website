@@ -49,8 +49,8 @@ export const metadata: Metadata = {
 };
 
 const navItems = [
-  { href: "/partner", label: "Partner" },
   { href: "/articles", label: "Reviews" },
+  { href: "/partner", label: "Partner" },
   { href: "/popularvideos", label: "Popular Videos" },
   { href: "/search", label: "Search" },
   { href: "/contact", label: "Contact" },

@@ -6,6 +6,7 @@ import {
   getPublishedArticleBySlug,
   getPublishedArticles,
 } from "@/lib/articles";
+import rawArticleImageFallbacks from "@/data/article-image-fallbacks.json";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,11 @@ type ArticleBlock = {
 
 type SharePlatform = "email" | "facebook" | "threads" | "x";
 
+const articleImageFallbacks = rawArticleImageFallbacks as {
+  articles: Record<string, string>;
+  videos: Record<string, string>;
+};
+
 function containsUrl(line: string) {
   return /https?:\/\//.test(line);
 }
@@ -41,6 +47,13 @@ const imageUrlReplacements = new Map([
     "https://www.mooncool.com/cdn/shop/files/20260311.61.png?v=1776239251&width=2048",
   ],
 ]);
+
+const videoThumbnailImageReplacements = new Map(
+  Object.entries(articleImageFallbacks.videos),
+);
+const articleImageReplacements = new Map(
+  Object.entries(articleImageFallbacks.articles),
+);
 
 const knownLowQualityInlineImageUrls = new Set([
   "https://www.qronge.com/cdn/shop/files/3x_25.png?v=1775123287",
@@ -85,11 +98,65 @@ function getDisplayImageUrl(src: string, fallbackImageUrl = "", alt = "") {
     return replacement;
   }
 
+  const thumbnailReplacement = videoThumbnailImageReplacements.get(
+    getYouTubeThumbnailVideoId(src),
+  );
+
+  if (thumbnailReplacement) {
+    return thumbnailReplacement;
+  }
+
   if (fallbackImageUrl && shouldUseFallbackInlineImage(src, alt)) {
     return fallbackImageUrl;
   }
 
   return src;
+}
+
+function getYouTubeThumbnailVideoId(src: string) {
+  try {
+    const parsed = new URL(src);
+    const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
+
+    if (!["img.youtube.com", "i.ytimg.com"].includes(host)) {
+      return "";
+    }
+
+    return parsed.pathname.match(/\/vi\/([A-Za-z0-9_-]{11})\//)?.[1] || "";
+  } catch {
+    return "";
+  }
+}
+
+function normalizeImageUrl(src: string) {
+  try {
+    const parsed = new URL(src);
+
+    return `${parsed.hostname.replace(/^www\./, "").toLowerCase()}${parsed.pathname}`;
+  } catch {
+    return src;
+  }
+}
+
+function isDuplicateArticleImage(
+  src: string,
+  featuredImageUrl = "",
+  youtubeVideoId = "",
+) {
+  if (!src) {
+    return true;
+  }
+
+  const srcVideoId = getYouTubeThumbnailVideoId(src);
+
+  if (srcVideoId && (srcVideoId === youtubeVideoId || srcVideoId === getYouTubeThumbnailVideoId(featuredImageUrl))) {
+    return true;
+  }
+
+  return Boolean(
+    featuredImageUrl &&
+      normalizeImageUrl(src) === normalizeImageUrl(featuredImageUrl),
+  );
 }
 
 function parseGeneratedLinkLine(text: string) {
@@ -611,11 +678,21 @@ function buildArticleBlocks(
         return;
       }
 
+      const displayImageUrl = getDisplayImageUrl(
+        imageMatch[2],
+        fallbackImageUrl,
+        imageMatch[1],
+      );
+
+      if (isDuplicateArticleImage(displayImageUrl, fallbackImageUrl, youtubeVideoId)) {
+        return;
+      }
+
       inlineImageCount += 1;
       blocks.push({
         alt: imageMatch[1] || "Review image",
         key: `article-image-${index}`,
-        src: getDisplayImageUrl(imageMatch[2], fallbackImageUrl, imageMatch[1]),
+        src: displayImageUrl,
         text: imageMatch[1] || "",
         type: "image",
       });
@@ -678,6 +755,43 @@ function buildArticleBlocks(
   });
 
   return blocks;
+}
+
+function addFallbackArticleImage(
+  blocks: ArticleBlock[],
+  slug = "",
+  youtubeVideoId = "",
+  title = "Review image",
+) {
+  const fallbackImageUrl =
+    articleImageReplacements.get(slug) ||
+    videoThumbnailImageReplacements.get(youtubeVideoId);
+
+  if (!fallbackImageUrl || blocks.some((block) => block.type === "image")) {
+    return blocks;
+  }
+
+  const firstParagraphIndex = blocks.findIndex(
+    (block) =>
+      block.type === "paragraph" &&
+      !block.className?.includes("article-compact-links"),
+  );
+
+  if (firstParagraphIndex === -1) {
+    return blocks;
+  }
+
+  return [
+    ...blocks.slice(0, firstParagraphIndex + 1),
+    {
+      alt: title,
+      key: `fallback-article-image-${slug || youtubeVideoId}`,
+      src: fallbackImageUrl,
+      text: title,
+      type: "image" as const,
+    },
+    ...blocks.slice(firstParagraphIndex + 1),
+  ];
 }
 
 function formatArticleDate(value: string | null) {
@@ -770,10 +884,15 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
       platform: "email" as const,
     },
   ];
-  const articleBlocks = buildArticleBlocks(
-    article.content,
-    article.featuredImageUrl,
+  const articleBlocks = addFallbackArticleImage(
+    buildArticleBlocks(
+      article.content,
+      article.featuredImageUrl,
+      article.video?.youtubeVideoId,
+    ),
+    article.slug,
     article.video?.youtubeVideoId,
+    article.title,
   );
   const merchLinkIndex = article.links.findIndex((link) =>
     link.label.toLowerCase().includes("runplayback merch"),

@@ -1092,8 +1092,39 @@ async function findArticleImages(description, title) {
   ];
 }
 
-function insertArticleImages(content, images) {
-  const selectedImages = images.slice(0, 1);
+function getYouTubeThumbnailVideoId(url) {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
+
+    if (!["img.youtube.com", "i.ytimg.com"].includes(host)) {
+      return "";
+    }
+
+    return parsed.pathname.match(/\/vi\/([A-Za-z0-9_-]{11})\//)?.[1] || "";
+  } catch {
+    return "";
+  }
+}
+
+function isDuplicateThumbnailImage(url, { featuredImageUrl = "", youtubeVideoId = "" } = {}) {
+  const imageVideoId = getYouTubeThumbnailVideoId(url);
+
+  if (
+    imageVideoId &&
+    (imageVideoId === youtubeVideoId ||
+      imageVideoId === getYouTubeThumbnailVideoId(featuredImageUrl || ""))
+  ) {
+    return true;
+  }
+
+  return Boolean(featuredImageUrl && imageKey(url) === imageKey(featuredImageUrl));
+}
+
+function insertArticleImages(content, images, options = {}) {
+  const selectedImages = images
+    .filter((image) => !isDuplicateThumbnailImage(image.url, options))
+    .slice(0, 1);
 
   if (!selectedImages.length) {
     return content;
@@ -1470,7 +1501,10 @@ async function main() {
       };
       const draft = await generateArticleDraftWithRetry(draftSource);
       const images = await findArticleImages(channelVideo.description, channelVideo.title);
-      const content = insertArticleImages(draft.content, images);
+      const content = insertArticleImages(draft.content, images, {
+        featuredImageUrl: channelVideo.thumbnailUrl,
+        youtubeVideoId: channelVideo.youtubeVideoId,
+      });
       const slug = `${draft.slug}-${channelVideo.youtubeVideoId}`;
 
       if (dryRun) {
