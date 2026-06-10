@@ -13,7 +13,6 @@ export default function AdminLoginPage() {
           <h1>RunPlayBack admin</h1>
           {hasSupabaseConfig ? (
             <>
-              <p>Sign in with the admin account from Supabase Auth.</p>
               <Suspense fallback={<p>Loading login...</p>}>
                 <AdminLoginForm />
               </Suspense>

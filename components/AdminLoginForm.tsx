@@ -49,7 +49,6 @@ export function AdminLoginForm() {
         <input
           autoComplete="email"
           onChange={(event) => setEmail(event.target.value)}
-          placeholder="admin@runplayback.com"
           required
           type="email"
           value={email}
