@@ -966,6 +966,38 @@ button {
   grid-template-columns: 180px 1fr auto;
 }
 
+.missing-image-row {
+  align-items: start;
+  background: white;
+  border: 1px solid #dce4d7;
+  border-radius: 8px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.9fr);
+  padding: 14px;
+}
+
+.missing-image-form {
+  display: grid;
+  gap: 10px;
+}
+
+.missing-image-form label {
+  color: var(--admin-ink);
+  display: grid;
+  font-weight: 800;
+  gap: 8px;
+}
+
+.missing-image-form input {
+  background: white;
+  border: 1px solid #dce4d7;
+  border-radius: 8px;
+  color: var(--admin-ink);
+  padding: 11px 12px;
+  width: 100%;
+}
+
 .popular-video-form {
   display: grid;
   gap: 12px;
@@ -1106,6 +1138,7 @@ button {
   .table-row,
   .video-row,
   .popular-video-row,
+  .missing-image-row,
   .popular-video-form-grid {
     grid-template-columns: 1fr;
   }

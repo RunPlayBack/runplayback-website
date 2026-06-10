@@ -6,6 +6,7 @@ const adminLinks = [
   { href: "/admin/videos", label: "Videos" },
   { href: "/admin/popular-videos", label: "Popular Videos" },
   { href: "/admin/articles", label: "Reviews" },
+  { href: "/admin/missing-images", label: "Image Repair" },
 ];
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
