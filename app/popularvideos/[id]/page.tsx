@@ -34,7 +34,7 @@ function parseDescriptionLinkLine(line: string) {
   const label = line
     .slice(0, line.indexOf(url))
     .replace(/^[•*\-\s]+/g, "")
-    .replace(/[-–—:;|]+$/g, "")
+    .replace(/[-–—:;|.\s]+$/g, "")
     .trim();
 
   try {
@@ -166,7 +166,7 @@ export default async function PopularVideoDetailPage({
           {descriptionContent.links.length ? (
             <section className="video-detail-links" aria-label="Video links">
               <h2 className="section-title">Links</h2>
-              <div className="article-link-list">
+              <div className="article-link-list video-detail-link-list">
                 {descriptionContent.links.map((link) => (
                   <a href={link.url} key={link.url} rel="noreferrer" target="_blank">
                     {link.label}

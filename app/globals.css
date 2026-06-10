@@ -302,6 +302,11 @@ button {
   text-underline-offset: 3px;
 }
 
+.video-detail-link-list a {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
 .article-share-section {
   margin-top: 42px;
 }
