@@ -62,24 +62,72 @@ function extractMarkdownImages(content: string) {
   );
 }
 
-function hasProductImage(article: ArticleRow) {
+const knownLowQualityInlineImageUrls = new Set([
+  "https://www.qronge.com/cdn/shop/files/3x_25.png?v=1775123287",
+  "https://cdn.shopify.com/s/files/1/0583/5810/4213/files/Rectangle_9.jpg?v=1771140830",
+  "https://www.sasikeibike.com/cdn/shop/files/1733390593915_160x.jpg?v=1733390617",
+  "https://beyondriders.com/cdn/shop/files/Beyond_Riders_R_White__3.png?v=1755951808&width=600",
+]);
+
+function shouldUseFallbackInlineImage(url: string, alt = "") {
+  if (knownLowQualityInlineImageUrls.has(url)) {
+    return true;
+  }
+
+  if (alt.toLowerCase().includes("runplayback merch")) {
+    return true;
+  }
+
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
+    const path = parsed.pathname.toLowerCase();
+    const requestedWidth = Number(parsed.searchParams.get("width") || 0);
+
+    return (
+      (requestedWidth > 0 && requestedWidth < 600) ||
+      host.endsWith("facebook.com") ||
+      path.includes("pixel") ||
+      path.includes("noscript") ||
+      /_\d+x\./.test(path) ||
+      path.includes("beyond_riders_r_white") ||
+      path.endsWith(".gif")
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isDuplicateThumbnailImage(
+  url: string,
+  { featuredImageUrl = "", youtubeVideoId = "" } = {},
+) {
+  const imageVideoId = getYouTubeThumbnailVideoId(url);
+
+  if (
+    imageVideoId &&
+    (imageVideoId === youtubeVideoId ||
+      imageVideoId === getYouTubeThumbnailVideoId(featuredImageUrl))
+  ) {
+    return true;
+  }
+
+  return Boolean(featuredImageUrl && getImageKey(url) === getImageKey(featuredImageUrl));
+}
+
+function hasRealProductImage(article: ArticleRow) {
   const video = Array.isArray(article.videos) ? article.videos[0] : article.videos;
   const featuredImageUrl = article.featured_image_url || video?.thumbnail_url || "";
   const youtubeVideoId = video?.youtube_video_id || "";
 
-  return extractMarkdownImages(article.content).some((image) => {
-    const imageVideoId = getYouTubeThumbnailVideoId(image.url);
-
-    if (
-      imageVideoId &&
-      (imageVideoId === youtubeVideoId ||
-        imageVideoId === getYouTubeThumbnailVideoId(featuredImageUrl))
-    ) {
-      return false;
-    }
-
-    return !featuredImageUrl || getImageKey(image.url) !== getImageKey(featuredImageUrl);
-  });
+  return extractMarkdownImages(article.content).some(
+    (image) =>
+      !shouldUseFallbackInlineImage(image.url, image.alt) &&
+      !isDuplicateThumbnailImage(image.url, {
+        featuredImageUrl,
+        youtubeVideoId: youtubeVideoId || "",
+      }),
+  );
 }
 
 function getSearchQuery(title: string) {
@@ -123,7 +171,7 @@ export default async function MissingImagesPage({
     errorMessage = error.message;
   } else {
     articles = ((data || []) as unknown as ArticleRow[]).filter(
-      (article) => !hasProductImage(article),
+      (article) => !hasRealProductImage(article),
     );
   }
 
@@ -136,6 +184,7 @@ export default async function MissingImagesPage({
           Search for a clean product image, paste the image URL, and save. The
           review updates automatically.
         </p>
+        <p className="meta">{articles.length} reviews need product images.</p>
       </div>
       {errorMessage ? <p className="form-error">{errorMessage}</p> : null}
       {resolvedSearchParams?.saved ? (
