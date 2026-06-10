@@ -9,6 +9,106 @@ type PopularVideoDetailPageProps = {
   }>;
 };
 
+const urlPattern = /https?:\/\/[^\s)\]}>"']+/g;
+
+type VideoDescriptionContent = {
+  links: Array<{
+    label: string;
+    url: string;
+  }>;
+  summary: string;
+};
+
+function cleanUrl(url: string) {
+  return url.replace(/[.,;!?]+$/, "");
+}
+
+function parseDescriptionLinkLine(line: string) {
+  const url = line.match(urlPattern)?.[0];
+
+  if (!url) {
+    return null;
+  }
+
+  const clean = cleanUrl(url);
+  const label = line
+    .slice(0, line.indexOf(url))
+    .replace(/^[•*\-\s]+/g, "")
+    .replace(/[-–—:;|]+$/g, "")
+    .trim();
+
+  try {
+    return {
+      label: label || new URL(clean).hostname.replace(/^www\./, ""),
+      url: clean,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function getVideoDescriptionContent(description: string): VideoDescriptionContent {
+  const lines = description
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const summary: string[] = [];
+  const links: VideoDescriptionContent["links"] = [];
+  let isCollectingLinks = false;
+  let hasSeenMerchLink = false;
+  const seenUrls = new Set<string>();
+
+  for (const line of lines) {
+    const lowerLine = line.toLowerCase();
+    const isLinksHeading = /^links?\b/.test(lowerLine);
+    const isStopHeading =
+      /^(chapters?|timestamps?|follow|subscribe|social|website|contact|music|gear|camera|disclaimer|business)\b/.test(
+        lowerLine,
+      );
+
+    if (isLinksHeading) {
+      isCollectingLinks = true;
+      continue;
+    }
+
+    if (isStopHeading || hasSeenMerchLink) {
+      break;
+    }
+
+    const link = parseDescriptionLinkLine(line);
+
+    if (link) {
+      isCollectingLinks = true;
+
+      if (!seenUrls.has(link.url)) {
+        links.push(link);
+        seenUrls.add(link.url);
+      }
+
+      if (link.label.toLowerCase().includes("runplayback merch")) {
+        hasSeenMerchLink = true;
+      }
+
+      continue;
+    }
+
+    if (isCollectingLinks) {
+      continue;
+    }
+
+    const cleanLine = line.replace(/(?:\s+#\w+)+$/g, "").trim();
+
+    if (cleanLine) {
+      summary.push(cleanLine);
+    }
+  }
+
+  return {
+    links,
+    summary: summary.join("\n\n").trim(),
+  };
+}
+
 export async function generateMetadata({
   params,
 }: PopularVideoDetailPageProps): Promise<Metadata> {
@@ -45,6 +145,8 @@ export default async function PopularVideoDetailPage({
     notFound();
   }
 
+  const descriptionContent = getVideoDescriptionContent(video.description);
+
   return (
     <main className="page">
       <div className="legacy-page">
@@ -60,14 +162,23 @@ export default async function PopularVideoDetailPage({
         />
         <div className="video-detail-copy">
           <h1>{video.title}</h1>
-          {video.description ? <p>{video.description}</p> : null}
+          {descriptionContent.summary ? <p>{descriptionContent.summary}</p> : null}
+          {descriptionContent.links.length ? (
+            <section className="video-detail-links" aria-label="Video links">
+              <h2 className="section-title">Links</h2>
+              <div className="article-link-list">
+                {descriptionContent.links.map((link) => (
+                  <a href={link.url} key={link.url} rel="noreferrer" target="_blank">
+                    {link.label}
+                  </a>
+                ))}
+              </div>
+            </section>
+          ) : null}
           <div className="video-detail-actions">
             <Link className="button secondary-button" href="/popularvideos">
               Back to Popular Videos
             </Link>
-            <a className="button" href={video.videoUrl}>
-              Watch on YouTube
-            </a>
           </div>
         </div>
       </div>
