@@ -159,7 +159,7 @@ function getLinkLabel(description, url) {
       ? description.slice(0, index).split("\n").at(-1)?.trim() || ""
       : "";
   const label = line
-    .replace(/[-–—:|]+$/g, "")
+    .replace(/[-–—:;|]+$/g, "")
     .replace(/^[•*\-\s]+/g, "")
     .trim();
 
@@ -721,6 +721,7 @@ Style:
 - Prioritize real-world riding impressions over specs.
 - Use short paragraphs and descriptive subheadings.
 - Include What We Like, Things To Consider, Final Thoughts, and Links sections.
+- Format product and affiliate links as Markdown links with only the product/link name visible, like [Zondoo ZO01 Plus](https://amzn.to/example). Do not show raw URLs after the link name.
 - Do not include a Video section in the article body. The website automatically embeds the YouTube video below the article.
 - Do not include the current YouTube video URL in the article body or Links section.
 - Preserve URLs from the description in the Links section.

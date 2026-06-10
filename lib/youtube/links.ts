@@ -16,7 +16,7 @@ function getLabel(description: string, url: string) {
       ? description.slice(0, index).split("\n").at(-1)?.trim() || ""
       : "";
   const label = line
-    .replace(/[-–—:|]+$/g, "")
+    .replace(/[-–—:;|]+$/g, "")
     .replace(/^[•*\-\s]+/g, "")
     .trim();
 

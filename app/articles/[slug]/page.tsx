@@ -18,6 +18,7 @@ type ArticlePageProps = {
 type ArticleBlock = {
   alt?: string;
   className?: string;
+  href?: string;
   key: string;
   src?: string;
   text: string;
@@ -89,6 +90,77 @@ function getDisplayImageUrl(src: string, fallbackImageUrl = "", alt = "") {
   }
 
   return src;
+}
+
+function parseGeneratedLinkLine(text: string) {
+  const trimmed = text.replace(/^[-*]\s+/, "").trim();
+  const labeledUrlMatch = trimmed.match(/^(.+?)\s*[:;|–—-]\s*(https?:\/\/\S+)$/);
+
+  if (!labeledUrlMatch) {
+    return {
+      label: trimmed,
+      url: "",
+    };
+  }
+
+  const [, label, url] = labeledUrlMatch;
+  const cleanLabel = label
+    .replace(/^["“]|["”]$/g, "")
+    .replaceAll("**", "")
+    .trim();
+  const cleanUrl = url.replace(/[.,;!?]+$/, "");
+
+  if (!cleanLabel) {
+    return {
+      label: cleanUrl,
+      url: "",
+    };
+  }
+
+  return {
+    label: cleanLabel,
+    url: cleanUrl,
+  };
+}
+
+function humanizeUrlLabel(url: string) {
+  try {
+    const parsed = new URL(url);
+    const productPath = parsed.pathname
+      .split("/")
+      .filter(Boolean)
+      .filter((part) => !["dp", "products", "shop", "list"].includes(part.toLowerCase()))
+      .at(-1);
+
+    if (productPath) {
+      const label = productPath
+        .replace(/\.[a-z0-9]+$/i, "")
+        .replace(/[-_]+/g, " ")
+        .replace(/\b\w/g, (letter) => letter.toUpperCase())
+        .trim();
+
+      if (label && !/^[A-Z0-9]{8,}$/.test(label.replace(/\s/g, ""))) {
+        return label;
+      }
+    }
+
+    return parsed.hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+function getArticleLinkLabel(label: string, url: string) {
+  const cleanLabel = label
+    .replace(/[-–—:;|]+$/g, "")
+    .replaceAll("**", "")
+    .trim();
+
+  if (!cleanLabel || /^https?:\/\//i.test(cleanLabel)) {
+    return humanizeUrlLabel(url);
+  }
+
+  return cleanLabel;
 }
 
 function renderLinkedText(text: string, keyPrefix: string): ReactNode[] {
@@ -554,12 +626,15 @@ function buildArticleBlocks(
       return;
     }
 
-    const linkText = isGeneratedLinksLine
-      ? displayLine.replace(/^[-*]\s+/, "")
+    const generatedLink = isGeneratedLinksLine
+      ? parseGeneratedLinkLine(displayLine)
+      : null;
+    const linkText = generatedLink
+      ? generatedLink.label
       : listMatch
         ? listMatch[1]
         : displayLine;
-    const isHyperlinkLine = /https?:\/\//.test(linkText);
+    const isHyperlinkLine = Boolean(generatedLink?.url) || /https?:\/\//.test(linkText);
     const isMerchLine = linkText
       .toLowerCase()
       .includes("runplayback merch");
@@ -584,6 +659,7 @@ function buildArticleBlocks(
       className: listMatch && !isGeneratedLinksLine
         ? `article-list-line ${className || ""}`.trim()
         : className,
+      href: generatedLink?.url || undefined,
       key: `${linkText}-${index}`,
       text: normalizeFirstPersonVoice(linkText),
       type: listMatch && !isGeneratedLinksLine ? "list" : "paragraph",
@@ -840,7 +916,18 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
                   {block.className?.includes("article-generated-link") ? null : (
                     <span aria-hidden="true">• </span>
                   )}
-                  {renderInlineText(block.text, `list-${index}`)}
+                  {block.href ? (
+                    <a
+                      className="inline-link"
+                      href={block.href}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      {block.text}
+                    </a>
+                  ) : (
+                    renderInlineText(block.text, `list-${index}`)
+                  )}
                 </p>
               );
             }
@@ -855,7 +942,18 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
 
             return (
               <p className={block.className} key={block.key}>
-                {renderInlineText(block.text, `paragraph-${index}`)}
+                {block.href ? (
+                  <a
+                    className="inline-link"
+                    href={block.href}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    {block.text}
+                  </a>
+                ) : (
+                  renderInlineText(block.text, `paragraph-${index}`)
+                )}
               </p>
             );
           })}
@@ -878,7 +976,7 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
             <div className="article-link-list">
               {visibleArticleLinks.map((link) => (
                 <a href={link.url} key={link.id} rel="noreferrer" target="_blank">
-                  {link.label}
+                  {getArticleLinkLabel(link.label, link.url)}
                 </a>
               ))}
             </div>

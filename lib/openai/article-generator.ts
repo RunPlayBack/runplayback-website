@@ -211,6 +211,7 @@ Important:
 - Do not invent exact specs if they are not in the source.
 - If captions are missing, write a useful draft based on the title and description and clearly keep it general.
 - Include a "Links" section that preserves any URLs found in the description.
+- Format product and affiliate links as Markdown links with only the product/link name visible, like [Zondoo ZO01 Plus](https://amzn.to/example). Do not show raw URLs after the link name.
 - Do not include a "Video" section in the article body. The website automatically embeds the YouTube video below the article.
 - Do not include the current YouTube video URL in the article body or Links section.
 - The slug should be lowercase, URL-safe, and concise.
