@@ -210,8 +210,9 @@ button {
 
 .article-inline-image img {
   aspect-ratio: 16 / 9;
+  background: #f4f4f1;
   display: block;
-  object-fit: cover;
+  object-fit: contain;
   width: 100%;
 }
 
