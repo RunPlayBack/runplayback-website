@@ -6,6 +6,7 @@ import { saveMissingArticleImage } from "./actions";
 type MissingImagesPageProps = {
   searchParams?: Promise<{
     error?: string;
+    q?: string;
     saved?: string;
   }>;
 };
@@ -147,7 +148,11 @@ export default async function MissingImagesPage({
   const resolvedSearchParams = await searchParams;
   const supabase = await createClient();
   let articles: ArticleRow[] = [];
+  let missingCount = 0;
   let errorMessage = resolvedSearchParams?.error || "";
+  const query = (resolvedSearchParams?.q || "").trim();
+  const normalizedQuery = query.toLowerCase();
+  const returnPath = `/admin/missing-images${query ? `?q=${encodeURIComponent(query)}` : ""}`;
 
   if (!supabase) {
     return (
@@ -170,21 +175,49 @@ export default async function MissingImagesPage({
   if (error) {
     errorMessage = error.message;
   } else {
-    articles = ((data || []) as unknown as ArticleRow[]).filter(
-      (article) => !hasRealProductImage(article),
-    );
+    const allArticles = (data || []) as unknown as ArticleRow[];
+    const missingArticles = allArticles.filter((article) => !hasRealProductImage(article));
+
+    missingCount = missingArticles.length;
+    articles = normalizedQuery
+      ? allArticles.filter((article) =>
+          [article.title, article.slug].some((value) =>
+            value.toLowerCase().includes(normalizedQuery),
+          ),
+        )
+      : missingArticles;
   }
 
   return (
     <AdminLayout>
       <div className="admin-card">
         <p className="eyebrow">Image Repair</p>
-        <h1>Missing product images</h1>
+        <h1>Product image repair</h1>
         <p>
-          Search for a clean product image, paste the image URL, and save. The
-          review updates automatically.
+          Search for a review, paste the correct product image URL, and save.
+          Existing wrong images are replaced automatically.
         </p>
-        <p className="meta">{articles.length} reviews need product images.</p>
+        <form action="/admin/missing-images" className="missing-image-search" method="get">
+          <input
+            defaultValue={query}
+            name="q"
+            placeholder="Search by title or slug"
+            type="search"
+          />
+          <button className="button" type="submit">
+            Search Reviews
+          </button>
+          {query ? (
+            <Link className="button secondary-button" href="/admin/missing-images">
+              Show Missing Only
+            </Link>
+          ) : null}
+        </form>
+        <p className="meta">
+          {query
+            ? `${articles.length} matching reviews.`
+            : `${missingCount} reviews need product images.`}
+        </p>
       </div>
       {errorMessage ? <p className="form-error">{errorMessage}</p> : null}
       {resolvedSearchParams?.saved ? (
@@ -197,11 +230,15 @@ export default async function MissingImagesPage({
             const searchUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(
               query,
             )}`;
+            const hasProductImage = hasRealProductImage(article);
 
             return (
               <div className="missing-image-row" key={article.id}>
                 <div>
                   <strong>{article.title}</strong>
+                  <span className="image-repair-status">
+                    {hasProductImage ? "Has image" : "Needs image"}
+                  </span>
                   <p>{article.slug}</p>
                   <div className="video-row-actions">
                     <a
@@ -223,6 +260,7 @@ export default async function MissingImagesPage({
                 </div>
                 <form action={saveMissingArticleImage} className="missing-image-form">
                   <input name="articleId" type="hidden" value={article.id} />
+                  <input name="returnTo" type="hidden" value={returnPath} />
                   <label>
                     Product image URL
                     <input

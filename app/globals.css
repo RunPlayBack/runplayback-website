@@ -977,6 +977,35 @@ button {
   padding: 14px;
 }
 
+.missing-image-search {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  margin-top: 18px;
+}
+
+.missing-image-search input {
+  background: white;
+  border: 1px solid #dce4d7;
+  border-radius: 8px;
+  color: var(--admin-ink);
+  padding: 11px 12px;
+  width: 100%;
+}
+
+.image-repair-status {
+  background: #e6f5e9;
+  border-radius: 999px;
+  color: #0c6f37;
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  margin-left: 10px;
+  padding: 4px 8px;
+  text-transform: uppercase;
+}
+
 .missing-image-form {
   display: grid;
   gap: 10px;
@@ -1139,6 +1168,7 @@ button {
   .video-row,
   .popular-video-row,
   .missing-image-row,
+  .missing-image-search,
   .popular-video-form-grid {
     grid-template-columns: 1fr;
   }

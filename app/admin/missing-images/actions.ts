@@ -8,9 +8,23 @@ function getString(formData: FormData, key: string) {
   return String(formData.get(key) || "").trim();
 }
 
-function redirectWithError(error: unknown): never {
+function getSafeReturnPath(formData: FormData) {
+  const returnTo = getString(formData, "returnTo");
+
+  return returnTo.startsWith("/admin/missing-images")
+    ? returnTo
+    : "/admin/missing-images";
+}
+
+function addStatusToPath(path: string, key: string, value: string) {
+  const separator = path.includes("?") ? "&" : "?";
+
+  return `${path}${separator}${key}=${encodeURIComponent(value)}`;
+}
+
+function redirectWithError(error: unknown, returnPath = "/admin/missing-images"): never {
   const message = error instanceof Error ? error.message : "Unable to save image.";
-  redirect(`/admin/missing-images?error=${encodeURIComponent(message)}`);
+  redirect(addStatusToPath(returnPath, "error", message));
 }
 
 function removeMarkdownImages(content: string) {
@@ -76,6 +90,7 @@ function insertImageAfterFirstParagraph(content: string, imageUrl: string, title
 export async function saveMissingArticleImage(formData: FormData) {
   const articleId = getString(formData, "articleId");
   const imageUrl = getString(formData, "imageUrl");
+  const returnPath = getSafeReturnPath(formData);
   const supabase = await createClient();
 
   if (!supabase) {
@@ -83,13 +98,13 @@ export async function saveMissingArticleImage(formData: FormData) {
   }
 
   if (!articleId) {
-    redirectWithError(new Error("Missing review ID."));
+    redirectWithError(new Error("Missing review ID."), returnPath);
   }
 
   try {
     new URL(imageUrl);
   } catch {
-    redirectWithError(new Error("Paste a valid image URL."));
+    redirectWithError(new Error("Paste a valid image URL."), returnPath);
   }
 
   const { data: article, error: articleError } = await supabase
@@ -104,7 +119,7 @@ export async function saveMissingArticleImage(formData: FormData) {
     }>();
 
   if (articleError || !article) {
-    redirectWithError(articleError || new Error("Review not found."));
+    redirectWithError(articleError || new Error("Review not found."), returnPath);
   }
 
   const { error } = await supabase
@@ -116,11 +131,11 @@ export async function saveMissingArticleImage(formData: FormData) {
     .eq("id", article.id);
 
   if (error) {
-    redirectWithError(error);
+    redirectWithError(error, returnPath);
   }
 
   revalidatePath("/admin/missing-images");
   revalidatePath("/articles");
   revalidatePath(`/articles/${article.slug}`);
-  redirect("/admin/missing-images?saved=1");
+  redirect(addStatusToPath(returnPath, "saved", "1"));
 }
