@@ -57,7 +57,7 @@ Over the years, I've watched his channel grow from simple riding videos into one
 
 As soon as I arrived, it was obvious that this wasn't just a hobby anymore. Every part of the property reflected years of dedication to content creation, riding, testing, and building a community around electric mobility. From the bike collection to the filming setup, everything had a purpose.
 
-From Math Teacher to Full-Time Creator
+From Math Student to Full-Time Creator
 
 One of the most interesting parts of our conversation was learning about Surronster's path before YouTube.
 
