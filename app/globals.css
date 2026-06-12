@@ -915,6 +915,36 @@ button {
   padding: 14px;
 }
 
+.article-admin-row {
+  grid-template-columns: minmax(0, 1.5fr) auto minmax(220px, 0.7fr) auto;
+}
+
+.quick-author-form {
+  align-items: end;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.quick-author-form label {
+  color: var(--admin-ink);
+  display: grid;
+  font-size: 0.78rem;
+  font-weight: 800;
+  gap: 6px;
+  text-transform: uppercase;
+}
+
+.quick-author-form select {
+  background: white;
+  border: 1px solid #dce4d7;
+  border-radius: 8px;
+  color: var(--admin-ink);
+  min-height: 38px;
+  padding: 8px 10px;
+  width: 100%;
+}
+
 .video-row {
   align-items: center;
   background: white;
@@ -1185,6 +1215,10 @@ button {
   .article-navigation {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .quick-author-form {
+    grid-template-columns: 1fr;
   }
 
   .article-list-header,

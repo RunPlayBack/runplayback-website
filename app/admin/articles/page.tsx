@@ -1,12 +1,17 @@
 import Link from "next/link";
 import { AdminLayout } from "@/components/AdminLayout";
 import { createClient } from "@/lib/supabase/server";
-import { createDraftArticle, publishAllDraftArticles } from "./actions";
+import {
+  createDraftArticle,
+  publishAllDraftArticles,
+  updateArticleAuthor,
+} from "./actions";
 
 type AdminArticlesPageProps = {
   searchParams?: Promise<{
     deleted?: string;
     error?: string;
+    authorUpdated?: string;
     publishedAll?: string;
   }>;
 };
@@ -15,6 +20,7 @@ type AdminArticle = {
   id: string;
   title: string;
   slug: string;
+  author_name: string | null;
   status: "draft" | "published";
   updated_at: string;
 };
@@ -30,7 +36,7 @@ export default async function AdminArticlesPage({
   if (supabase) {
     const { data, error } = await supabase
       .from("articles")
-      .select("id,title,slug,status,updated_at")
+      .select("id,title,slug,author_name,status,updated_at")
       .order("updated_at", { ascending: false });
 
     if (error) {
@@ -63,6 +69,9 @@ export default async function AdminArticlesPage({
       {resolvedSearchParams?.deleted ? (
         <p className="form-success">Review deleted.</p>
       ) : null}
+      {resolvedSearchParams?.authorUpdated ? (
+        <p className="form-success">Author updated.</p>
+      ) : null}
       {resolvedSearchParams?.publishedAll ? (
         <p className="form-success">
           {resolvedSearchParams.publishedAll === "0"
@@ -74,18 +83,43 @@ export default async function AdminArticlesPage({
       ) : null}
       <div className="table-list">
         {articles.length ? (
-          articles.map((article) => (
-            <div className="table-row" key={article.id}>
-              <div>
-                <strong>{article.title}</strong>
-                <p>{article.slug}</p>
+          articles.map((article) => {
+            const updateArticleAuthorWithId = updateArticleAuthor.bind(
+              null,
+              article.id,
+            );
+
+            return (
+              <div className="table-row article-admin-row" key={article.id}>
+                <div>
+                  <strong>{article.title}</strong>
+                  <p>{article.slug}</p>
+                </div>
+                <span className={`status ${article.status}`}>{article.status}</span>
+                <form
+                  action={updateArticleAuthorWithId}
+                  className="quick-author-form"
+                >
+                  <label>
+                    Author
+                    <select
+                      name="author_name"
+                      defaultValue={article.author_name || "RunPlayBack"}
+                    >
+                      <option value="RunPlayBack">RunPlayBack</option>
+                      <option value="Sully">Sully</option>
+                    </select>
+                  </label>
+                  <button className="button secondary-button" type="submit">
+                    Save
+                  </button>
+                </form>
+                <Link className="button" href={`/admin/articles/${article.id}`}>
+                  Edit
+                </Link>
               </div>
-              <span className={`status ${article.status}`}>{article.status}</span>
-              <Link className="button" href={`/admin/articles/${article.id}`}>
-                Edit
-              </Link>
-            </div>
-          ))
+            );
+          })
         ) : (
           <div className="admin-card">
             <h2>No reviews yet</h2>

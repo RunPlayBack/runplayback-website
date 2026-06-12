@@ -111,6 +111,51 @@ export async function saveArticle(articleId: string, formData: FormData) {
   redirect(`/admin/articles/${articleId}?saved=1`);
 }
 
+export async function updateArticleAuthor(articleId: string, formData: FormData) {
+  const supabase = await createClient();
+
+  if (!supabase) {
+    redirect("/admin/login");
+  }
+
+  const authorName = getString(formData, "author_name") || "RunPlayBack";
+
+  if (!["RunPlayBack", "Sully"].includes(authorName)) {
+    redirectWithError("/admin/articles", new Error("Choose a valid author."));
+  }
+
+  const { data: article, error: findError } = await supabase
+    .from("articles")
+    .select("slug")
+    .eq("id", articleId)
+    .single<{ slug: string }>();
+
+  if (findError || !article) {
+    redirectWithError(
+      "/admin/articles",
+      findError || new Error("Review not found."),
+    );
+  }
+
+  const { error } = await supabase
+    .from("articles")
+    .update({
+      author_name: authorName,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", articleId);
+
+  if (error) {
+    redirectWithError("/admin/articles", error);
+  }
+
+  revalidatePath("/admin/articles");
+  revalidatePath(`/admin/articles/${articleId}`);
+  revalidatePath("/articles");
+  revalidatePath(`/articles/${article.slug}`);
+  redirect("/admin/articles?authorUpdated=1");
+}
+
 export async function addProductImagesToArticle(articleId: string) {
   const supabase = await createClient();
 
