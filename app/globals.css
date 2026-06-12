@@ -916,7 +916,17 @@ button {
 }
 
 .article-admin-row {
-  grid-template-columns: minmax(0, 1.5fr) auto minmax(220px, 0.7fr) auto;
+  grid-template-columns: 132px minmax(0, 1.5fr) auto minmax(220px, 0.7fr) auto;
+}
+
+.article-admin-thumbnail,
+.article-admin-thumbnail-placeholder {
+  aspect-ratio: 16 / 9;
+  background: #f4f4f1;
+  border-radius: 6px;
+  display: block;
+  object-fit: cover;
+  width: 100%;
 }
 
 .quick-author-form {

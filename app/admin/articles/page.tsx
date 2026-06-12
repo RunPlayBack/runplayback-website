@@ -20,6 +20,7 @@ type AdminArticle = {
   id: string;
   title: string;
   slug: string;
+  featured_image_url: string | null;
   author_name: string | null;
   status: "draft" | "published";
   updated_at: string;
@@ -36,7 +37,7 @@ export default async function AdminArticlesPage({
   if (supabase) {
     const { data, error } = await supabase
       .from("articles")
-      .select("id,title,slug,author_name,status,updated_at")
+      .select("id,title,slug,featured_image_url,author_name,status,updated_at")
       .order("updated_at", { ascending: false });
 
     if (error) {
@@ -91,6 +92,15 @@ export default async function AdminArticlesPage({
 
             return (
               <div className="table-row article-admin-row" key={article.id}>
+                {article.featured_image_url ? (
+                  <img
+                    alt=""
+                    className="article-admin-thumbnail"
+                    src={article.featured_image_url}
+                  />
+                ) : (
+                  <div className="article-admin-thumbnail-placeholder" />
+                )}
                 <div>
                   <strong>{article.title}</strong>
                   <p>{article.slug}</p>
