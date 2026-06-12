@@ -65,6 +65,7 @@ export async function createDraftArticle() {
       seo_title: "New RunPlayBack Review",
       seo_description: "Draft review created in the RunPlayBack admin.",
       featured_image_url: "https://img.youtube.com/vi/dKj79mhbpGs/hqdefault.jpg",
+      author_name: "RunPlayBack",
       content:
         "Introduction\n\nFirst impressions\n\nTechnical specifications\n\nReal world experience\n\nPros\n\nCons\n\nFinal thoughts\n\nVideo\n\nLinks",
       status: "draft",
@@ -95,6 +96,7 @@ export async function saveArticle(articleId: string, formData: FormData) {
       seo_title: getString(formData, "seo_title"),
       seo_description: getString(formData, "seo_description"),
       featured_image_url: getString(formData, "featured_image_url"),
+      author_name: getString(formData, "author_name") || "RunPlayBack",
       content: String(formData.get("content") || ""),
       updated_at: new Date().toISOString(),
     })

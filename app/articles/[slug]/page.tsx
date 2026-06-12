@@ -877,7 +877,8 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
         keywords: getArticleKeywords(article),
         wordCount: plainArticleText ? plainArticleText.split(/\s+/).length : undefined,
         author: {
-          "@id": "https://runplayback.com/#organization",
+          "@type": "Person",
+          name: article.authorName,
         },
         publisher: {
           "@id": "https://runplayback.com/#organization",
@@ -973,6 +974,7 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
         ) : null}
         <div className="copy article-content">
           <h1>{article.title}</h1>
+          <p className="article-author">Written by {article.authorName}</p>
           {article.displayPublishedAt ? (
             <p className="article-date">
               {formatArticleDate(article.displayPublishedAt)}

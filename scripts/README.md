@@ -135,3 +135,26 @@ npm run repair:article-images -- --apply
 The repair skips reviews that already have a real product image, removes duplicate
 YouTube thumbnail images from the body, and inserts the best product image it can find
 from the saved official product links.
+
+## Backfill Article Authors
+
+After running `supabase/article-authors.sql` in Supabase, use the thumbnail-based
+author classifier to set existing published reviews to either RunPlayBack or Sully.
+
+Preview a small batch first:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run backfill:article-authors -- --all --limit=10
+```
+
+Apply the author updates:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run backfill:article-authors -- --all --apply
+```
+
+The script uses `/Users/rik/Desktop/runplayback.jpg` and `/Users/rik/Desktop/sully.jpg`
+as visual examples when they are available. New reviews default to RunPlayBack, and
+the author can always be changed in the admin review editor.

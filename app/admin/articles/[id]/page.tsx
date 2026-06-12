@@ -29,6 +29,7 @@ type AdminArticle = {
   seo_title: string | null;
   seo_description: string | null;
   featured_image_url: string | null;
+  author_name: string | null;
   content: string;
   status: "draft" | "published";
   published_at: string | null;
@@ -79,7 +80,7 @@ export default async function AdminArticleEditorPage({
   const { data: article, error } = await supabase
     .from("articles")
     .select(
-      "id,title,slug,seo_title,seo_description,featured_image_url,content,status,published_at",
+      "id,title,slug,seo_title,seo_description,featured_image_url,author_name,content,status,published_at",
     )
     .eq("id", id)
     .single<AdminArticle>();
@@ -142,6 +143,13 @@ export default async function AdminArticleEditorPage({
             placeholder="https://img.youtube.com/vi/video-id/hqdefault.jpg"
             defaultValue={article.featured_image_url || ""}
           />
+        </label>
+        <label>
+          Author
+          <select name="author_name" defaultValue={article.author_name || "RunPlayBack"}>
+            <option value="RunPlayBack">RunPlayBack</option>
+            <option value="Sully">Sully</option>
+          </select>
         </label>
         <label>
           Review content

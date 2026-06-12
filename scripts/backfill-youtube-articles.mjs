@@ -1518,6 +1518,7 @@ async function main() {
         .from("articles")
         .insert({
           content,
+          author_name: "RunPlayBack",
           featured_image_url: channelVideo.thumbnailUrl,
           published_at: channelVideo.publishedAt,
           seo_description: draft.seo_description,

@@ -8,6 +8,7 @@ export type PublicArticle = {
   seoTitle: string;
   seoDescription: string;
   featuredImageUrl: string;
+  authorName: string;
   content: string;
   displayPublishedAt: string | null;
   status: "draft" | "published";
@@ -32,6 +33,7 @@ type SupabaseArticleRow = {
   seo_title: string | null;
   seo_description: string | null;
   featured_image_url: string | null;
+  author_name: string | null;
   content: string;
   status: "draft" | "published";
   published_at: string | null;
@@ -93,6 +95,7 @@ function mapSupabaseArticle(row: SupabaseArticleRow): PublicArticle {
       (fallbackYouTubeVideoId
         ? `https://img.youtube.com/vi/${fallbackYouTubeVideoId}/hqdefault.jpg`
         : ""),
+    authorName: row.author_name || "RunPlayBack",
     content: row.content,
     displayPublishedAt: video?.published_at || row.published_at,
     status: row.status,
@@ -119,6 +122,7 @@ function mapPlaceholderArticles(): PublicArticle[] {
       seoTitle: article.title,
       seoDescription: article.seoDescription,
       featuredImageUrl: article.image,
+      authorName: "RunPlayBack",
       content: `${article.excerpt}\n\nThis is placeholder content until Supabase published articles are available.`,
       displayPublishedAt: null,
       status: article.status,
@@ -145,7 +149,7 @@ export async function getPublishedArticles() {
   const { data, error } = await supabase
     .from("articles")
     .select(
-      "id,title,slug,seo_title,seo_description,featured_image_url,content,status,published_at,videos(published_at,youtube_video_id,video_url,title),affiliate_links(id,label,url)",
+      "id,title,slug,seo_title,seo_description,featured_image_url,author_name,content,status,published_at,videos(published_at,youtube_video_id,video_url,title),affiliate_links(id,label,url)",
     )
     .eq("status", "published")
     .order("published_at", { ascending: false, nullsFirst: false });
@@ -170,7 +174,7 @@ export async function getPublishedArticleBySlug(slug: string) {
   const { data, error } = await supabase
     .from("articles")
     .select(
-      "id,title,slug,seo_title,seo_description,featured_image_url,content,status,published_at,videos(published_at,youtube_video_id,video_url,title),affiliate_links(id,label,url)",
+      "id,title,slug,seo_title,seo_description,featured_image_url,author_name,content,status,published_at,videos(published_at,youtube_video_id,video_url,title),affiliate_links(id,label,url)",
     )
     .eq("status", "published")
     .eq("slug", slug)

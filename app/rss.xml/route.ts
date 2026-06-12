@@ -28,13 +28,14 @@ export async function GET() {
         <link>${articleUrl}</link>
         <guid isPermaLink="true">${articleUrl}</guid>
         <pubDate>${formatRssDate(article.displayPublishedAt)}</pubDate>
+        <dc:creator>${escapeXml(article.authorName)}</dc:creator>
         <description>${escapeXml(article.seoDescription)}</description>
       </item>`;
     })
     .join("");
 
   const rss = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>RunPlayBack Reviews</title>
     <link>${siteUrl}/articles</link>

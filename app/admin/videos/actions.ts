@@ -231,6 +231,7 @@ export async function generateDraftArticleFromVideo(videoId: string) {
       seo_title: draft.seo_title,
       seo_description: draft.seo_description,
       featured_image_url: video.thumbnail_url,
+      author_name: "RunPlayBack",
       content: contentWithImages,
       status: "draft",
     })

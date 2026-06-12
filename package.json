@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "backfill:all-articles": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node scripts/backfill-all-youtube-articles.mjs",
+    "backfill:article-authors": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node scripts/backfill-article-authors.mjs",
     "backfill:articles": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node scripts/backfill-youtube-articles.mjs",
     "repair:article-images": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node scripts/repair-article-product-images.mjs",
     "popular-videos:update": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node scripts/update-popular-videos.mjs",
