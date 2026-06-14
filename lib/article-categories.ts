@@ -357,6 +357,17 @@ function getArticleCategoryScore(article: PublicArticle, category: ArticleCatego
 }
 
 function getArticleCategoryMatch(article: PublicArticle) {
+  const manualCategory = article.categorySlug
+    ? getArticleCategoryBySlug(article.categorySlug)
+    : null;
+
+  if (manualCategory) {
+    return {
+      category: manualCategory,
+      score: 1000,
+    };
+  }
+
   const titleCategory = getTitleCategory(article);
 
   if (titleCategory) {

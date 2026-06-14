@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { AdminLayout } from "@/components/AdminLayout";
+import { articleCategories, getArticleCategory } from "@/lib/article-categories";
+import type { PublicArticle } from "@/lib/articles";
 import { createClient } from "@/lib/supabase/server";
 import {
   addProductImagesToArticle,
@@ -30,9 +32,24 @@ type AdminArticle = {
   seo_description: string | null;
   featured_image_url: string | null;
   author_name: string | null;
+  category_slug: string | null;
   content: string;
   status: "draft" | "published";
   published_at: string | null;
+  videos:
+    | {
+        published_at: string | null;
+        title: string;
+        video_url: string;
+        youtube_video_id: string;
+      }
+    | Array<{
+        published_at: string | null;
+        title: string;
+        video_url: string;
+        youtube_video_id: string;
+      }>
+    | null;
 };
 
 function getStatusMessage(searchParams?: {
@@ -80,7 +97,7 @@ export default async function AdminArticleEditorPage({
   const { data: article, error } = await supabase
     .from("articles")
     .select(
-      "id,title,slug,seo_title,seo_description,featured_image_url,author_name,content,status,published_at",
+      "id,title,slug,seo_title,seo_description,featured_image_url,author_name,category_slug,content,status,published_at,videos(published_at,title,video_url,youtube_video_id)",
     )
     .eq("id", id)
     .single<AdminArticle>();
@@ -98,6 +115,30 @@ export default async function AdminArticleEditorPage({
   const unpublishArticleWithId = unpublishArticle.bind(null, article.id);
   const deleteArticleWithId = deleteArticle.bind(null, article.id);
   const statusMessage = getStatusMessage(resolvedSearchParams);
+  const video = Array.isArray(article.videos) ? article.videos[0] : article.videos;
+  const automaticCategory = getArticleCategory({
+    authorName: article.author_name || "RunPlayBack",
+    categorySlug: null,
+    content: article.content,
+    displayPublishedAt: video?.published_at || article.published_at,
+    featuredImageUrl: article.featured_image_url || "",
+    id: article.id,
+    links: [],
+    publishedAt: article.published_at,
+    seoDescription: article.seo_description || "",
+    seoTitle: article.seo_title || article.title,
+    slug: article.slug,
+    status: article.status,
+    title: article.title,
+    video: video
+      ? {
+          publishedAt: video.published_at,
+          title: video.title,
+          videoUrl: video.video_url,
+          youtubeVideoId: video.youtube_video_id,
+        }
+      : null,
+  } satisfies PublicArticle);
 
   return (
     <AdminLayout>
@@ -149,6 +190,17 @@ export default async function AdminArticleEditorPage({
           <select name="author_name" defaultValue={article.author_name || "RunPlayBack"}>
             <option value="RunPlayBack">RunPlayBack</option>
             <option value="Sully">Sully</option>
+          </select>
+        </label>
+        <label>
+          Category
+          <select name="category_slug" defaultValue={article.category_slug || ""}>
+            <option value="">Auto: {automaticCategory.label}</option>
+            {articleCategories.map((category) => (
+              <option key={category.slug} value={category.slug}>
+                {category.label}
+              </option>
+            ))}
           </select>
         </label>
         <label>

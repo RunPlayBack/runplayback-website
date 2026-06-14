@@ -20,6 +20,7 @@ create table if not exists public.articles (
   seo_description text,
   featured_image_url text,
   author_name text not null default 'RunPlayBack',
+  category_slug text,
   content text not null default '',
   status text not null default 'draft' check (status in ('draft', 'published')),
   published_at timestamptz,

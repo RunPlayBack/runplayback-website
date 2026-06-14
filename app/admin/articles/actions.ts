@@ -6,6 +6,7 @@ import {
   findArticleImageCandidates,
   insertArticleImages,
 } from "@/lib/article-images";
+import { articleCategories, getArticleCategoryBySlug } from "@/lib/article-categories";
 import { createClient } from "@/lib/supabase/server";
 
 function getString(formData: FormData, key: string) {
@@ -49,6 +50,26 @@ type DraftArticlePublishRow = {
     | null;
 };
 
+function getCategorySlug(formData: FormData) {
+  const categorySlug = getString(formData, "category_slug");
+
+  if (!categorySlug) {
+    return null;
+  }
+
+  if (!getArticleCategoryBySlug(categorySlug)) {
+    throw new Error("Choose a valid category.");
+  }
+
+  return categorySlug;
+}
+
+function revalidateCategoryPages() {
+  for (const category of articleCategories) {
+    revalidatePath(`/articles/categories/${category.slug}`);
+  }
+}
+
 export async function createDraftArticle() {
   const supabase = await createClient();
 
@@ -66,6 +87,7 @@ export async function createDraftArticle() {
       seo_description: "Draft review created in the RunPlayBack admin.",
       featured_image_url: "https://img.youtube.com/vi/dKj79mhbpGs/hqdefault.jpg",
       author_name: "RunPlayBack",
+      category_slug: null,
       content:
         "Introduction\n\nFirst impressions\n\nTechnical specifications\n\nReal world experience\n\nPros\n\nCons\n\nFinal thoughts\n\nVideo\n\nLinks",
       status: "draft",
@@ -88,6 +110,14 @@ export async function saveArticle(articleId: string, formData: FormData) {
     redirect("/admin/login");
   }
 
+  let categorySlug: string | null = null;
+
+  try {
+    categorySlug = getCategorySlug(formData);
+  } catch (error) {
+    redirectWithError(`/admin/articles/${articleId}`, error);
+  }
+
   const { error } = await supabase
     .from("articles")
     .update({
@@ -97,6 +127,7 @@ export async function saveArticle(articleId: string, formData: FormData) {
       seo_description: getString(formData, "seo_description"),
       featured_image_url: getString(formData, "featured_image_url"),
       author_name: getString(formData, "author_name") || "RunPlayBack",
+      category_slug: categorySlug,
       content: String(formData.get("content") || ""),
       updated_at: new Date().toISOString(),
     })
@@ -108,7 +139,57 @@ export async function saveArticle(articleId: string, formData: FormData) {
 
   revalidatePath("/admin/articles");
   revalidatePath(`/admin/articles/${articleId}`);
+  revalidatePath("/articles");
+  revalidateCategoryPages();
   redirect(`/admin/articles/${articleId}?saved=1`);
+}
+
+export async function updateArticleCategory(articleId: string, formData: FormData) {
+  const supabase = await createClient();
+
+  if (!supabase) {
+    redirect("/admin/login");
+  }
+
+  let categorySlug: string | null = null;
+
+  try {
+    categorySlug = getCategorySlug(formData);
+  } catch (error) {
+    redirectWithError("/admin/articles", error);
+  }
+
+  const { data: article, error: findError } = await supabase
+    .from("articles")
+    .select("slug")
+    .eq("id", articleId)
+    .single<{ slug: string }>();
+
+  if (findError || !article) {
+    redirectWithError(
+      "/admin/articles",
+      findError || new Error("Review not found."),
+    );
+  }
+
+  const { error } = await supabase
+    .from("articles")
+    .update({
+      category_slug: categorySlug,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", articleId);
+
+  if (error) {
+    redirectWithError("/admin/articles", error);
+  }
+
+  revalidatePath("/admin/articles");
+  revalidatePath(`/admin/articles/${articleId}`);
+  revalidatePath("/articles");
+  revalidatePath(`/articles/${article.slug}`);
+  revalidateCategoryPages();
+  redirect("/admin/articles?categoryUpdated=1");
 }
 
 export async function updateArticleAuthor(articleId: string, formData: FormData) {
@@ -153,6 +234,7 @@ export async function updateArticleAuthor(articleId: string, formData: FormData)
   revalidatePath(`/admin/articles/${articleId}`);
   revalidatePath("/articles");
   revalidatePath(`/articles/${article.slug}`);
+  revalidateCategoryPages();
   redirect("/admin/articles?authorUpdated=1");
 }
 
@@ -258,6 +340,7 @@ export async function publishArticle(articleId: string) {
   revalidatePath("/admin/articles");
   revalidatePath(`/admin/articles/${articleId}`);
   revalidatePath("/articles");
+  revalidateCategoryPages();
   redirect(`/admin/articles/${articleId}?published=1`);
 }
 
@@ -284,6 +367,7 @@ export async function unpublishArticle(articleId: string) {
   revalidatePath("/admin/articles");
   revalidatePath(`/admin/articles/${articleId}`);
   revalidatePath("/articles");
+  revalidateCategoryPages();
   redirect(`/admin/articles/${articleId}?unpublished=1`);
 }
 
@@ -329,6 +413,7 @@ export async function publishAllDraftArticles() {
   revalidatePath("/admin");
   revalidatePath("/admin/articles");
   revalidatePath("/articles");
+  revalidateCategoryPages();
   redirect(`/admin/articles?publishedAll=${drafts.length}`);
 }
 
@@ -365,5 +450,6 @@ export async function deleteArticle(articleId: string) {
   revalidatePath("/admin/articles");
   revalidatePath("/articles");
   revalidatePath(`/articles/${article.slug}`);
+  revalidateCategoryPages();
   redirect("/admin/articles?deleted=1");
 }
