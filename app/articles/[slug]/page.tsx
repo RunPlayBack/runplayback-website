@@ -596,7 +596,7 @@ function getRelatedArticleTerms(article: {
   seoDescription: string;
   video: { title: string } | null;
 }) {
-  return `${article.title} ${article.video?.title || ""} ${article.seoDescription}`
+  return `${article.title} ${article.video?.title || ""}`
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, " ")
     .split(/\s+/)
@@ -609,28 +609,45 @@ function getRelatedArticleTerms(article: {
     );
 }
 
+function getSharedTitleTermScore(
+  currentArticle: {
+    title: string;
+    seoDescription: string;
+    video: { title: string } | null;
+  },
+  article: {
+    title: string;
+    seoDescription: string;
+    video: { title: string } | null;
+  },
+) {
+  const currentTerms = new Set(getRelatedArticleTerms(currentArticle));
+  const articleTerms = new Set(getRelatedArticleTerms(article));
+  let score = 0;
+
+  for (const term of articleTerms) {
+    if (currentTerms.has(term)) {
+      score += term.length > 5 ? 4 : 2;
+    }
+  }
+
+  return score;
+}
+
 function getRelatedArticles(
   currentArticle: NonNullable<Awaited<ReturnType<typeof getPublishedArticleBySlug>>>,
   articles: Awaited<ReturnType<typeof getPublishedArticles>>,
 ) {
-  const currentTerms = getRelatedArticleTerms(currentArticle);
-  const currentTermSet = new Set(currentTerms);
+  const currentCategory = getArticleCategory(currentArticle);
   const currentSource = `${currentArticle.title} ${currentArticle.video?.title || ""}`.toLowerCase();
 
   return articles
     .filter((article) => article.slug !== currentArticle.slug)
     .map((article) => {
-      const articleTerms = getRelatedArticleTerms(article);
-      const articleTermSet = new Set(articleTerms);
-      let score = 0;
-
-      for (const term of articleTermSet) {
-        if (currentTermSet.has(term)) {
-          score += term.length > 5 ? 3 : 2;
-        }
-      }
-
+      const articleCategory = getArticleCategory(article);
       const relatedSource = `${article.title} ${article.video?.title || ""}`.toLowerCase();
+      const isSameCategory = articleCategory.slug === currentCategory.slug;
+      const titleTermScore = getSharedTitleTermScore(currentArticle, article);
       const sharedPhrases = [
         "surron",
         "sur ron",
@@ -649,20 +666,24 @@ function getRelatedArticles(
         "cargo",
         "drone",
       ];
+      let sharedPhraseScore = 0;
 
       for (const phrase of sharedPhrases) {
         if (currentSource.includes(phrase) && relatedSource.includes(phrase)) {
-          score += 6;
+          sharedPhraseScore += 8;
         }
       }
 
-      if (article.authorName === currentArticle.authorName) {
-        score += 1;
+      if (!isSameCategory && titleTermScore + sharedPhraseScore < 12) {
+        return {
+          article,
+          score: 0,
+        };
       }
 
       return {
         article,
-        score,
+        score: (isSameCategory ? 50 : 0) + titleTermScore + sharedPhraseScore,
       };
     })
     .filter((item) => item.score > 0)
