@@ -369,6 +369,14 @@ function normalizeHeading(line: string) {
   return stripMarkdownHeading(line).replaceAll("**", "").trim().toLowerCase();
 }
 
+function shouldSkipArticleSection(heading: string) {
+  return (
+    heading === "video" ||
+    heading === "chapters" ||
+    heading.startsWith("video chapters")
+  );
+}
+
 function normalizeFirstPersonVoice(text: string) {
   return naturalizeReviewVoice(text
     .replace(/\bThis video is all about\b/gi, "My first impressions come down to")
@@ -771,7 +779,7 @@ function buildArticleBlocks(
 
     if (isHeading) {
       activeHeading = normalizeHeading(trimmed);
-      shouldSkipSection = activeHeading === "video";
+      shouldSkipSection = shouldSkipArticleSection(activeHeading);
       shouldSkipNextYouTubeUrl =
         !shouldSkipSection &&
         isYouTubeUrlLine(lines.slice(index + 1).find((nextLine) => nextLine.trim()) || "");
