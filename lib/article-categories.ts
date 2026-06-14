@@ -59,7 +59,6 @@ export const articleCategories: ArticleCategory[] = [
       "talaria",
       "rawrr",
       "eride",
-      "72v",
       "off-road",
       "off road",
       "zonveer",
@@ -150,6 +149,145 @@ function keywordScore(text: string, keywords: string[]) {
   );
 }
 
+function getCategory(slug: string) {
+  return articleCategories.find((category) => category.slug === slug) || null;
+}
+
+function getTitleCategory(article: PublicArticle) {
+  const { titleText } = getCategorySourceText(article);
+
+  if (
+    includesAny(titleText, [
+      "charging cabinet",
+      "battery cabinet",
+      "storage cabinet",
+      "charger",
+      "charging",
+      "yolin",
+    ])
+  ) {
+    return getCategory("charging-solutions");
+  }
+
+  if (
+    includesAny(titleText, [
+      "battery",
+      "batteries",
+      "lithium battery",
+      "lithium-ion battery",
+      "lithium ion battery",
+      "range test",
+      "r-spec",
+    ])
+  ) {
+    return getCategory("batteries");
+  }
+
+  if (
+    includesAny(titleText, [
+      "trike",
+      "electric trike",
+      "three wheel",
+      "three-wheel",
+      "3 wheel",
+      "3-wheel",
+      "tk2",
+      "creek pro",
+    ])
+  ) {
+    return getCategory("electric-trikes");
+  }
+
+  if (
+    includesAny(titleText, [
+      "scooter",
+      "electric scooter",
+      "seated scooter",
+      "kick scooter",
+    ])
+  ) {
+    return getCategory("electric-scooters");
+  }
+
+  if (
+    includesAny(titleText, [
+      "helmet",
+      "gloves",
+      "mirror",
+      "bag",
+      "pump",
+      "phone mount",
+      "alarm",
+      "gear",
+      "accessory",
+      "accessories",
+      "beyond riders",
+    ])
+  ) {
+    return getCategory("accessories");
+  }
+
+  if (
+    includesAny(titleText, [
+      "controller",
+      "torp",
+      "motor upgrade",
+      "brake",
+      "brakes",
+      "hydraulic",
+      "tire",
+      "tires",
+      "hub",
+      "install",
+    ])
+  ) {
+    return getCategory("controllers-upgrades");
+  }
+
+  if (
+    includesAny(titleText, [
+      "dirt bike",
+      "mini dirt",
+      "mini bike",
+      "surron",
+      "sur ron",
+      "talaria",
+      "rawrr",
+      "eride",
+      "off-road",
+      "off road",
+      "zonveer",
+      "windone",
+      "happyrun",
+    ])
+  ) {
+    return getCategory("mini-electric-dirt-bikes");
+  }
+
+  if (
+    includesAny(titleText, [
+      "ebike",
+      "e-bike",
+      "electric bike",
+      "folding bike",
+      "fat tire",
+      "moped-style",
+      "moped style",
+      "cargo ebike",
+      "lectric",
+      "urtopia",
+      "meelod",
+      "freego",
+      "yadea",
+      "luckeep",
+    ])
+  ) {
+    return getCategory("electric-bikes");
+  }
+
+  return null;
+}
+
 function getArticleCategoryScore(article: PublicArticle, category: ArticleCategory) {
   const { summaryText, titleText } = getCategorySourceText(article);
 
@@ -219,6 +357,15 @@ function getArticleCategoryScore(article: PublicArticle, category: ArticleCatego
 }
 
 function getArticleCategoryMatch(article: PublicArticle) {
+  const titleCategory = getTitleCategory(article);
+
+  if (titleCategory) {
+    return {
+      category: titleCategory,
+      score: 100,
+    };
+  }
+
   const scoredCategories = articleCategories
     .map((category) => ({
       category,
