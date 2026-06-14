@@ -509,6 +509,10 @@ function isGeneratedThumbnailLine(line: string) {
   return /^thumbnail\s*:?\s+https?:\/\/\S+/i.test(stripMarkdownHeading(line));
 }
 
+function isVideoChapterTimestampLine(line: string) {
+  return /^\d{1,2}:\d{2}(?::\d{2})?\s+\S+/.test(stripMarkdownHeading(line));
+}
+
 function isYouTubeLink(url: string) {
   try {
     const host = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
@@ -746,6 +750,7 @@ function buildArticleBlocks(
 
     if (
       isGeneratedThumbnailLine(trimmed) ||
+      isVideoChapterTimestampLine(trimmed) ||
       isCurrentVideoLinkLine(trimmed, youtubeVideoId) ||
       /^(watch|video)\s*:?\s+https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(
         stripMarkdownHeading(trimmed),
