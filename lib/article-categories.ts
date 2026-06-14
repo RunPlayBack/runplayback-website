@@ -72,7 +72,7 @@ export const articleCategories: ArticleCategory[] = [
       "Battery reviews, range tests, lithium upgrades, safety notes, and high-voltage EV battery builds.",
     label: "Batteries",
     slug: "batteries",
-    keywords: ["battery", "batteries", "72v", "52v", "lithium", "range test", "ah", "amp hour"],
+    keywords: ["battery", "batteries", "lithium battery", "range test", "amp hour"],
   },
   {
     description:
@@ -123,26 +123,121 @@ export const articleCategories: ArticleCategory[] = [
   },
 ];
 
-function normalizeCategoryText(article: Pick<PublicArticle, "content" | "seoDescription" | "title" | "video">) {
-  return `${article.title} ${article.video?.title || ""} ${article.seoDescription} ${article.content}`
+function normalizeCategoryText(value: string) {
+  return value
     .toLowerCase()
     .replace(/[^\w\s-]/g, " ");
 }
 
-export function getArticleCategory(article: PublicArticle) {
-  const text = normalizeCategoryText(article);
+function getCategorySourceText(article: Pick<PublicArticle, "seoDescription" | "title" | "video">) {
+  const titleText = normalizeCategoryText(`${article.title} ${article.video?.title || ""}`);
+  const summaryText = normalizeCategoryText(`${titleText} ${article.seoDescription}`);
+
+  return {
+    summaryText,
+    titleText,
+  };
+}
+
+function includesAny(text: string, phrases: string[]) {
+  return phrases.some((phrase) => text.includes(phrase));
+}
+
+function keywordScore(text: string, keywords: string[]) {
+  return keywords.reduce(
+    (total, keyword) => total + (text.includes(keyword.toLowerCase()) ? 1 : 0),
+    0,
+  );
+}
+
+function getArticleCategoryScore(article: PublicArticle, category: ArticleCategory) {
+  const { summaryText, titleText } = getCategorySourceText(article);
+
+  switch (category.slug) {
+    case "batteries": {
+      const hasBatteryFocus = includesAny(titleText, [
+        "battery",
+        "batteries",
+        "battery upgrade",
+        "battery build",
+        "battery breakdown",
+        "lithium-ion battery",
+        "lithium ion battery",
+        "r-spec",
+        "range test",
+      ]);
+
+      if (!hasBatteryFocus) {
+        return 0;
+      }
+
+      return 14 + keywordScore(summaryText, category.keywords);
+    }
+
+    case "charging-solutions": {
+      const hasChargingFocus = includesAny(titleText, [
+        "charging",
+        "charger",
+        "charging cabinet",
+        "battery cabinet",
+        "storage cabinet",
+        "yolin",
+      ]);
+
+      if (!hasChargingFocus) {
+        return 0;
+      }
+
+      return 16 + keywordScore(summaryText, category.keywords);
+    }
+
+    case "controllers-upgrades": {
+      const hasUpgradeFocus = includesAny(titleText, [
+        "controller",
+        "torp",
+        "motor",
+        "upgrade",
+        "brake",
+        "brakes",
+        "hydraulic",
+        "tire",
+        "tires",
+        "hub",
+        "install",
+      ]);
+
+      if (!hasUpgradeFocus) {
+        return 0;
+      }
+
+      return 10 + keywordScore(summaryText, category.keywords);
+    }
+
+    default:
+      return keywordScore(titleText, category.keywords) * 4 + keywordScore(summaryText, category.keywords);
+  }
+}
+
+function getArticleCategoryMatch(article: PublicArticle) {
   const scoredCategories = articleCategories
     .map((category) => ({
       category,
-      score: category.keywords.reduce(
-        (total, keyword) => total + (text.includes(keyword.toLowerCase()) ? 1 : 0),
-        0,
-      ),
+      score: getArticleCategoryScore(article, category),
     }))
     .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
 
-  return scoredCategories[0]?.category || articleCategories[0];
+      return articleCategories.indexOf(a.category) - articleCategories.indexOf(b.category);
+    });
+
+  return scoredCategories[0] || null;
+}
+
+export function getArticleCategory(article: PublicArticle) {
+  return getArticleCategoryMatch(article)?.category || articleCategories[0];
 }
 
 export function getArticleCategoryBySlug(slug: string) {
@@ -150,5 +245,5 @@ export function getArticleCategoryBySlug(slug: string) {
 }
 
 export function getArticlesForCategory(articles: PublicArticle[], categorySlug: string) {
-  return articles.filter((article) => getArticleCategory(article).slug === categorySlug);
+  return articles.filter((article) => getArticleCategoryMatch(article)?.category.slug === categorySlug);
 }
