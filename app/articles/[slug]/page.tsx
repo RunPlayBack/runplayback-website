@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -983,6 +983,21 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
     article.video?.youtubeVideoId,
     article.title,
   );
+  const firstBodyLinksBlockIndex = articleBlocks.findIndex(
+    (block) => block.type === "heading" && normalizeHeading(block.text) === "links",
+  );
+  const relatedReviewsSection = relatedArticles.length ? (
+    <section className="article-related-section" aria-label="Related reviews">
+      <h2 className="section-title">Related Reviews</h2>
+      <div className="article-related-links">
+        {relatedArticles.map((relatedArticle) => (
+          <Link href={`/articles/${relatedArticle.slug}`} key={relatedArticle.id}>
+            {relatedArticle.title}
+          </Link>
+        ))}
+      </div>
+    </section>
+  ) : null;
   const merchLinkIndex = article.links.findIndex((link) =>
     link.label.toLowerCase().includes("runplayback merch"),
   );
@@ -1112,16 +1127,18 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
             </p>
           ) : null}
           {articleBlocks.map((block, index) => {
+            const shouldInsertRelatedReviews =
+              relatedReviewsSection && index === firstBodyLinksBlockIndex;
+            let renderedBlock: ReactNode;
+
             if (block.type === "heading") {
-              return (
+              renderedBlock = (
                 <h2 key={block.key}>
                   {renderInlineText(block.text, `heading-${index}`)}
                 </h2>
               );
-            }
-
-            if (block.type === "list") {
-              return (
+            } else if (block.type === "list") {
+              renderedBlock = (
                 <p className={block.className} key={block.key}>
                   {block.className?.includes("article-generated-link") ? null : (
                     <span aria-hidden="true">• </span>
@@ -1140,31 +1157,36 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
                   )}
                 </p>
               );
-            }
-
-            if (block.type === "image" && block.src) {
-              return (
+            } else if (block.type === "image" && block.src) {
+              renderedBlock = (
                 <figure className="article-inline-image" key={block.key}>
                   <img src={block.src} alt={block.alt || ""} />
                 </figure>
               );
+            } else {
+              renderedBlock = (
+                <p className={block.className} key={block.key}>
+                  {block.href ? (
+                    <a
+                      className="inline-link"
+                      href={block.href}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      {block.text}
+                    </a>
+                  ) : (
+                    renderInlineText(block.text, `paragraph-${index}`)
+                  )}
+                </p>
+              );
             }
 
             return (
-              <p className={block.className} key={block.key}>
-                {block.href ? (
-                  <a
-                    className="inline-link"
-                    href={block.href}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    {block.text}
-                  </a>
-                ) : (
-                  renderInlineText(block.text, `paragraph-${index}`)
-                )}
-              </p>
+              <Fragment key={block.key}>
+                {shouldInsertRelatedReviews ? relatedReviewsSection : null}
+                {renderedBlock}
+              </Fragment>
             );
           })}
         </div>
@@ -1180,21 +1202,7 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
             />
           </section>
         ) : null}
-        {relatedArticles.length ? (
-          <section className="article-related-section" aria-label="Related reviews">
-            <h2 className="section-title">Related Reviews</h2>
-            <div className="article-related-links">
-              {relatedArticles.map((relatedArticle) => (
-                <Link
-                  href={`/articles/${relatedArticle.slug}`}
-                  key={relatedArticle.id}
-                >
-                  {relatedArticle.title}
-                </Link>
-              ))}
-            </div>
-          </section>
-        ) : null}
+        {firstBodyLinksBlockIndex === -1 ? relatedReviewsSection : null}
         {visibleArticleLinks.length ? (
           <section className="article-video-section" aria-label="Review links">
             <h2 className="section-title">Links</h2>
