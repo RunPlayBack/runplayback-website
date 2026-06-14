@@ -1168,6 +1168,18 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
             );
           })}
         </div>
+        {article.video ? (
+          <section className="article-video-section" aria-label="Review video">
+            <h2 className="section-title">Watch The Video</h2>
+            <iframe
+              className="video-embed"
+              src={`https://www.youtube.com/embed/${article.video.youtubeVideoId}`}
+              title={`${article.title} video`}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </section>
+        ) : null}
         {relatedArticles.length ? (
           <section className="article-related-section" aria-label="Related reviews">
             <h2 className="section-title">Related Reviews</h2>
@@ -1181,18 +1193,6 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
                 </Link>
               ))}
             </div>
-          </section>
-        ) : null}
-        {article.video ? (
-          <section className="article-video-section" aria-label="Review video">
-            <h2 className="section-title">Watch The Video</h2>
-            <iframe
-              className="video-embed"
-              src={`https://www.youtube.com/embed/${article.video.youtubeVideoId}`}
-              title={`${article.title} video`}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />
           </section>
         ) : null}
         {visibleArticleLinks.length ? (
