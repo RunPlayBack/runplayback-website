@@ -47,13 +47,12 @@ export const articleCategories: ArticleCategory[] = [
   },
   {
     description:
-      "Mini electric dirt bike reviews, Surron-style builds, off-road testing, and high-power compact EVs.",
-    label: "Mini Electric Dirt Bikes",
-    slug: "mini-electric-dirt-bikes",
+      "Electric dirt bike reviews, Surron-style builds, off-road testing, and high-power EV performance rides.",
+    label: "Electric Dirt Bikes",
+    slug: "electric-dirt-bikes",
     keywords: [
       "dirt bike",
-      "mini dirt",
-      "mini bike",
+      "electric dirt bike",
       "surron",
       "sur ron",
       "talaria",
@@ -61,6 +60,18 @@ export const articleCategories: ArticleCategory[] = [
       "eride",
       "off-road",
       "off road",
+    ],
+  },
+  {
+    description:
+      "Mini electric dirt bike reviews, beginner-friendly compact dirt bike tests, and smaller off-road EVs.",
+    label: "Mini Electric Dirt Bikes",
+    slug: "mini-electric-dirt-bikes",
+    keywords: [
+      "mini dirt",
+      "mini bike",
+      "mini electric dirt bike",
+      "mini electric bike",
       "zonveer",
       "windone",
       "happyrun",
@@ -246,9 +257,22 @@ function getTitleCategory(article: PublicArticle) {
 
   if (
     includesAny(titleText, [
-      "dirt bike",
       "mini dirt",
       "mini bike",
+      "mini electric dirt bike",
+      "mini electric bike",
+      "zonveer",
+      "windone",
+      "happyrun",
+    ])
+  ) {
+    return getCategory("mini-electric-dirt-bikes");
+  }
+
+  if (
+    includesAny(titleText, [
+      "dirt bike",
+      "electric dirt bike",
       "surron",
       "sur ron",
       "talaria",
@@ -256,12 +280,9 @@ function getTitleCategory(article: PublicArticle) {
       "eride",
       "off-road",
       "off road",
-      "zonveer",
-      "windone",
-      "happyrun",
     ])
   ) {
-    return getCategory("mini-electric-dirt-bikes");
+    return getCategory("electric-dirt-bikes");
   }
 
   if (
