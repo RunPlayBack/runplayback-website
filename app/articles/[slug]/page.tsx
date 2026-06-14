@@ -545,6 +545,136 @@ function getArticleKeywords(article: {
   return keywords;
 }
 
+const relatedArticleStopWords = new Set([
+  "about",
+  "after",
+  "again",
+  "also",
+  "and",
+  "back",
+  "bike",
+  "bikes",
+  "can",
+  "electric",
+  "first",
+  "for",
+  "from",
+  "full",
+  "good",
+  "has",
+  "how",
+  "into",
+  "mini",
+  "more",
+  "new",
+  "one",
+  "over",
+  "real",
+  "review",
+  "ride",
+  "runplayback",
+  "test",
+  "testing",
+  "the",
+  "this",
+  "top",
+  "video",
+  "what",
+  "with",
+  "world",
+  "worth",
+  "you",
+]);
+
+function getRelatedArticleTerms(article: {
+  title: string;
+  seoDescription: string;
+  video: { title: string } | null;
+}) {
+  return `${article.title} ${article.video?.title || ""} ${article.seoDescription}`
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .map((term) => term.replace(/^-+|-+$/g, ""))
+    .filter(
+      (term) =>
+        term.length > 2 &&
+        !relatedArticleStopWords.has(term) &&
+        !/^\d+$/.test(term),
+    );
+}
+
+function getRelatedArticles(
+  currentArticle: NonNullable<Awaited<ReturnType<typeof getPublishedArticleBySlug>>>,
+  articles: Awaited<ReturnType<typeof getPublishedArticles>>,
+) {
+  const currentTerms = getRelatedArticleTerms(currentArticle);
+  const currentTermSet = new Set(currentTerms);
+  const currentSource = `${currentArticle.title} ${currentArticle.video?.title || ""}`.toLowerCase();
+
+  return articles
+    .filter((article) => article.slug !== currentArticle.slug)
+    .map((article) => {
+      const articleTerms = getRelatedArticleTerms(article);
+      const articleTermSet = new Set(articleTerms);
+      let score = 0;
+
+      for (const term of articleTermSet) {
+        if (currentTermSet.has(term)) {
+          score += term.length > 5 ? 3 : 2;
+        }
+      }
+
+      const relatedSource = `${article.title} ${article.video?.title || ""}`.toLowerCase();
+      const sharedPhrases = [
+        "surron",
+        "sur ron",
+        "onewheel",
+        "trike",
+        "folding",
+        "fat tire",
+        "battery",
+        "brake",
+        "helmet",
+        "tire",
+        "scooter",
+        "mini bike",
+        "dirt bike",
+        "moped",
+        "cargo",
+        "drone",
+      ];
+
+      for (const phrase of sharedPhrases) {
+        if (currentSource.includes(phrase) && relatedSource.includes(phrase)) {
+          score += 6;
+        }
+      }
+
+      if (article.authorName === currentArticle.authorName) {
+        score += 1;
+      }
+
+      return {
+        article,
+        score,
+      };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+
+      return (
+        new Date(b.article.displayPublishedAt || 0).getTime() -
+        new Date(a.article.displayPublishedAt || 0).getTime()
+      );
+    })
+    .slice(0, 5)
+    .map((item) => item.article);
+}
+
 function isCurrentVideoLinkLine(line: string, youtubeVideoId = "") {
   if (!youtubeVideoId) {
     return false;
@@ -818,6 +948,7 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
   const currentArticleIndex = articles.findIndex((item) => item.slug === article.slug);
   const nextArticle =
     currentArticleIndex >= 0 ? articles[currentArticleIndex + 1] : null;
+  const relatedArticles = getRelatedArticles(article, articles);
   const articleUrl = `https://runplayback.com/articles/${article.slug}`;
   const plainArticleText = getPlainArticleText(article.content);
   const shareLinks = [
@@ -1037,6 +1168,21 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
             );
           })}
         </div>
+        {relatedArticles.length ? (
+          <section className="article-related-section" aria-label="Related reviews">
+            <h2 className="section-title">Related Reviews</h2>
+            <div className="article-related-links">
+              {relatedArticles.map((relatedArticle) => (
+                <Link
+                  href={`/articles/${relatedArticle.slug}`}
+                  key={relatedArticle.id}
+                >
+                  {relatedArticle.title}
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
         {article.video ? (
           <section className="article-video-section" aria-label="Review video">
             <h2 className="section-title">Watch The Video</h2>
