@@ -955,6 +955,15 @@ button {
   margin: 0;
 }
 
+.admin-command {
+  background: #111;
+  border-radius: 8px;
+  color: #fff;
+  overflow-x: auto;
+  padding: 16px;
+  white-space: pre-wrap;
+}
+
 .eyebrow,
 .meta {
   color: #1b8075;

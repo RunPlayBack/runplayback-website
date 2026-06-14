@@ -11,7 +11,8 @@
     "dev": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem next dev",
     "build": "next build",
     "start": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "import:video-stills": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node scripts/import-video-stills.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

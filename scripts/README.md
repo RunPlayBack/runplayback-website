@@ -136,6 +136,53 @@ The repair skips reviews that already have a real product image, removes duplica
 YouTube thumbnail images from the body, and inserts the best product image it can find
 from the saved official product links.
 
+## Import Video Stills Into Reviews
+
+The video still importer extracts six evenly spaced frames from each matched
+YouTube video, uploads them to the public `article-stills` Supabase Storage
+bucket, and inserts them throughout the matching review.
+
+This is intentionally a background script instead of a normal Admin button
+because extracting frames requires `yt-dlp` and `ffmpeg`, and can take several
+minutes for larger batches.
+
+Install the local tools if needed:
+
+```bash
+brew install yt-dlp ffmpeg
+```
+
+Preview the next five published reviews that need stills:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run import:video-stills -- --limit=5
+```
+
+Extract and import six stills for the next five reviews:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run import:video-stills -- --limit=5 --apply
+```
+
+Run one specific review by slug:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run import:video-stills -- --slug=your-review-slug --apply
+```
+
+Replace existing video stills for a review:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run import:video-stills -- --slug=your-review-slug --apply --force
+```
+
+The Admin page at `/admin/video-stills` shows which reviews already have six
+video stills and which still need them.
+
 ## Backfill Article Authors
 
 After running `supabase/article-authors.sql` in Supabase, use the thumbnail-based

@@ -513,6 +513,13 @@ function isVideoChapterTimestampLine(line: string) {
   return /^\d{1,2}:\d{2}(?::\d{2})?\s+\S+/.test(stripMarkdownHeading(line));
 }
 
+function isVideoStillImage(alt = "", src = "") {
+  return (
+    alt.toLowerCase().startsWith("video still") ||
+    src.includes("/article-stills/")
+  );
+}
+
 function isYouTubeLink(url: string) {
   try {
     const host = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
@@ -738,7 +745,7 @@ function buildArticleBlocks(
   let shouldSkipSection = false;
   let shouldSkipRemainingLinks = false;
   let shouldSkipNextYouTubeUrl = false;
-  let inlineImageCount = 0;
+  let inlineProductImageCount = 0;
   const lines = content.split("\n");
 
   lines.forEach((line, index) => {
@@ -802,21 +809,28 @@ function buildArticleBlocks(
     }
 
     if (imageMatch && !shouldSkipSection) {
-      if (inlineImageCount > 0) {
-        return;
-      }
-
       const displayImageUrl = getDisplayImageUrl(
         imageMatch[2],
         fallbackImageUrl,
         imageMatch[1],
       );
+      const isVideoStill = isVideoStillImage(imageMatch[1], displayImageUrl);
 
-      if (isDuplicateArticleImage(displayImageUrl, fallbackImageUrl, youtubeVideoId)) {
+      if (!isVideoStill && inlineProductImageCount > 0) {
         return;
       }
 
-      inlineImageCount += 1;
+      if (
+        !isVideoStill &&
+        isDuplicateArticleImage(displayImageUrl, fallbackImageUrl, youtubeVideoId)
+      ) {
+        return;
+      }
+
+      if (!isVideoStill) {
+        inlineProductImageCount += 1;
+      }
+
       blocks.push({
         alt: imageMatch[1] || "Review image",
         key: `article-image-${index}`,
