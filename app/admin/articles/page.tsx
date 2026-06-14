@@ -30,6 +30,8 @@ type AdminArticle = {
   category_slug: string | null;
   content: string;
   status: "draft" | "published";
+  published_at: string | null;
+  created_at: string;
   updated_at: string;
   videos:
     | {
@@ -52,8 +54,9 @@ export default async function AdminArticlesPage({
   if (supabase) {
     const { data, error } = await supabase
       .from("articles")
-      .select("id,title,slug,seo_description,featured_image_url,author_name,category_slug,content,status,updated_at,videos(title)")
-      .order("updated_at", { ascending: false });
+      .select("id,title,slug,seo_description,featured_image_url,author_name,category_slug,content,status,published_at,created_at,updated_at,videos(title)")
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false });
 
     if (error) {
       errorMessage = error.message;
