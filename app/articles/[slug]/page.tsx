@@ -988,7 +988,7 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
   );
   const relatedReviewsSection = relatedArticles.length ? (
     <section className="article-related-section" aria-label="Related reviews">
-      <h2 className="section-title">Related Reviews</h2>
+      <h2>Related Reviews</h2>
       <div className="article-related-links">
         {relatedArticles.map((relatedArticle) => (
           <Link href={`/articles/${relatedArticle.slug}`} key={relatedArticle.id}>
