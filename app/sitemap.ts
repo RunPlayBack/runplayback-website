@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { articleCategories } from "@/lib/article-categories";
 import { getPublishedArticles } from "@/lib/articles";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: "weekly" as const,
       priority: path === "" ? 1 : 0.8,
+    })),
+    ...articleCategories.map((category) => ({
+      url: `${siteUrl}/articles/categories/${category.slug}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.75,
     })),
     ...articles.map((article) => ({
       url: `${siteUrl}/articles/${article.slug}`,

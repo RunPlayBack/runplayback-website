@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getArticleCategory } from "@/lib/article-categories";
 import {
   getPublishedArticleBySlug,
   getPublishedArticles,
@@ -949,6 +950,7 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
   const nextArticle =
     currentArticleIndex >= 0 ? articles[currentArticleIndex + 1] : null;
   const relatedArticles = getRelatedArticles(article, articles);
+  const articleCategory = getArticleCategory(article);
   const articleUrl = `https://runplayback.com/articles/${article.slug}`;
   const plainArticleText = getPlainArticleText(article.content);
   const shareLinks = [
@@ -1120,6 +1122,12 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
         ) : null}
         <div className="copy article-content">
           <h1>{article.title}</h1>
+          <Link
+            className="category-link"
+            href={`/articles/categories/${articleCategory.slug}`}
+          >
+            {articleCategory.label}
+          </Link>
           <p className="article-author">Written by {article.authorName}</p>
           {article.displayPublishedAt ? (
             <p className="article-date">

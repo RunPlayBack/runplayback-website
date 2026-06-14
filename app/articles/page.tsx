@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ArticleCard, formatArticleDate } from "@/components/ArticleCard";
+import { articleCategories } from "@/lib/article-categories";
 import { getPublishedArticles } from "@/lib/articles";
 
 export const dynamic = "force-dynamic";
@@ -26,18 +28,6 @@ export const metadata: Metadata = {
     url: "/articles",
   },
 };
-
-function formatArticleDate(value: string | null) {
-  if (!value) {
-    return "";
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(value));
-}
 
 function getPageNumber(value: string | undefined, totalPages: number) {
   const pageNumber = Number(value || "1");
@@ -106,6 +96,13 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
         <div className="page-kicker">
           <span>Reviews</span>
         </div>
+        <nav className="category-nav" aria-label="Review categories">
+          {articleCategories.map((category) => (
+            <Link href={`/articles/categories/${category.slug}`} key={category.slug}>
+              {category.label}
+            </Link>
+          ))}
+        </nav>
         {featuredArticle && currentPage === 1 ? (
           <article className="featured-article">
             <p className="eyebrow">Latest Review</p>
@@ -144,28 +141,7 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
         <div className="article-grid">
           {visibleArticles.length ? (
             visibleArticles.map((article) => (
-              <article className="article-card" key={article.id}>
-                {article.featuredImageUrl ? (
-                  <Link
-                    aria-label={`Read ${article.title}`}
-                    href={`/articles/${article.slug}`}
-                  >
-                    <img src={article.featuredImageUrl} alt="" />
-                  </Link>
-                ) : null}
-                <h3>
-                  <Link href={`/articles/${article.slug}`}>{article.title}</Link>
-                </h3>
-                {article.displayPublishedAt ? (
-                  <p className="article-date">
-                    {formatArticleDate(article.displayPublishedAt)}
-                  </p>
-                ) : null}
-                <p>{article.seoDescription}</p>
-                <div className="tag-list">
-                  <span className="status published">published</span>
-                </div>
-              </article>
+              <ArticleCard article={article} key={article.id} />
             ))
           ) : (
             <div className="admin-card">
