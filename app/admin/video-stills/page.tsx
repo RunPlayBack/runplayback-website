@@ -154,9 +154,17 @@ npm run import:video-stills -- --limit=5 --apply`}
               >
                 {Math.min(stillCount, targetStillCount)}/{targetStillCount} stills
               </span>
-              <Link className="button secondary-button" href={`/articles/${article.slug}`}>
-                View
-              </Link>
+              <div className="video-row-actions">
+                <Link
+                  className="button secondary-button"
+                  href={`/articles/${article.slug}`}
+                >
+                  View
+                </Link>
+                <Link className="button" href={`/admin/video-stills/${article.id}`}>
+                  Edit Stills
+                </Link>
+              </div>
             </div>
           );
         })}
