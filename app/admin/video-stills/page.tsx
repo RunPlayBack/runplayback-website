@@ -23,6 +23,8 @@ type ArticleRow = {
     | null;
 };
 
+const targetStillCount = 4;
+
 function getVideoStillCount(content: string) {
   return [...content.matchAll(/^!\[([^\]]*)\]\((https?:\/\/[^)]+)\)$/gm)].filter(
     (match) =>
@@ -78,7 +80,7 @@ export default async function VideoStillsPage({
   }
 
   const completeCount = articles.filter(
-    (article) => getVideoStillCount(article.content) >= 6,
+    (article) => getVideoStillCount(article.content) >= targetStillCount,
   ).length;
   const missingCount = articles.length - completeCount;
 
@@ -88,7 +90,7 @@ export default async function VideoStillsPage({
         <p className="eyebrow">Video Stills</p>
         <h1>Review video stills</h1>
         <p>
-          Track which published reviews have six stills from the matching
+          Track which published reviews have four stills from the matching
           YouTube video. The importer extracts evenly spaced frames, uploads
           them to Supabase Storage, and inserts them throughout the review.
         </p>
@@ -113,7 +115,7 @@ export default async function VideoStillsPage({
       <div className="stats">
         <div className="admin-card stat">
           <strong>{completeCount}</strong>
-          <p>Reviews with 6 stills</p>
+          <p>Reviews with 4 stills</p>
         </div>
         <div className="admin-card stat">
           <strong>{missingCount}</strong>
@@ -145,8 +147,12 @@ npm run import:video-stills -- --limit=5 --apply`}
                   {videoId ? `YouTube video: ${videoId}` : "No matched YouTube video"}
                 </p>
               </div>
-              <span className={`status ${stillCount >= 6 ? "published" : "draft"}`}>
-                {stillCount}/6 stills
+              <span
+                className={`status ${
+                  stillCount >= targetStillCount ? "published" : "draft"
+                }`}
+              >
+                {Math.min(stillCount, targetStillCount)}/{targetStillCount} stills
               </span>
               <Link className="button secondary-button" href={`/articles/${article.slug}`}>
                 View

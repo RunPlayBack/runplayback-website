@@ -138,7 +138,7 @@ from the saved official product links.
 
 ## Import Video Stills Into Reviews
 
-The video still importer divides each matched YouTube video into six sections,
+The video still importer divides each matched YouTube video into four sections,
 samples several nearby frames in each section, picks the clearest frame with
 the strongest center detail, uploads it to the public `article-stills`
 Supabase Storage bucket, and inserts the stills above section headings in the
@@ -162,7 +162,7 @@ cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
 npm run import:video-stills -- --limit=5
 ```
 
-Extract and import six stills for the next five reviews:
+Extract and import four stills for the next five reviews:
 
 ```bash
 cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
@@ -238,7 +238,7 @@ cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
 npm run import:video-stills -- --video-id=your-youtube-video-id --apply --force --candidates=9 --sample-window=90 --cookies-from-browser=chrome
 ```
 
-The Admin page at `/admin/video-stills` shows which reviews already have six
+The Admin page at `/admin/video-stills` shows which reviews already have four
 video stills and which still need them.
 
 ## Backfill Article Authors

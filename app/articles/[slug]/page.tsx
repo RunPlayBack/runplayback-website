@@ -29,6 +29,8 @@ type ArticleBlock = {
 
 type SharePlatform = "email" | "facebook" | "threads" | "x";
 
+const targetVideoStillCount = 4;
+
 const articleImageFallbacks = rawArticleImageFallbacks as {
   articles: Record<string, string>;
   videos: Record<string, string>;
@@ -1010,7 +1012,7 @@ function reflowVideoStillBlocks(blocks: ArticleBlock[]) {
 
   const stillsToPlace = videoStillBlocks.slice(
     0,
-    Math.min(videoStillBlocks.length, headingIndexes.length),
+    Math.min(videoStillBlocks.length, headingIndexes.length, targetVideoStillCount),
   );
   const insertions = new Map<number, ArticleBlock[]>();
 

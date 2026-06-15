@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import path, { resolve } from "node:path";
 
 const defaultBucket = "article-stills";
-const defaultStillCount = 6;
+const defaultStillCount = 4;
 const defaultZoom = 1;
 const defaultCandidateCount = 5;
 const defaultSampleWindow = 60;
@@ -378,6 +378,7 @@ function isSkippableStillPlacementHeading(heading) {
     !heading ||
     heading === "introduction" ||
     heading === "intro" ||
+    heading === "final thoughts" ||
     heading === "final verdict" ||
     heading === "conclusion"
   );
@@ -653,7 +654,10 @@ async function processArticle(supabase, article, options) {
       return true;
     }
 
-    const nextContent = distributeVideoStills(article.content || "", existingVideoStills);
+    const nextContent = distributeVideoStills(
+      article.content || "",
+      existingVideoStills.slice(0, options.count),
+    );
     const { error } = await supabase
       .from("articles")
       .update({
