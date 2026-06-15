@@ -345,6 +345,39 @@ function removeExistingVideoStills(content) {
     .replace(/\n{3,}/g, "\n\n");
 }
 
+function getMarkdownImageLines(content) {
+  return content.split("\n").map((line, index) => {
+    const match = line
+      .trim()
+      .match(/^!\[([^\]]*)\]\((https?:\/\/[^)]+)\)$/);
+
+    return {
+      alt: match?.[1] || "",
+      index,
+      line,
+      url: match?.[2] || "",
+    };
+  });
+}
+
+function replaceVideoStillUrl(content, stillIndex, replacementUrl, fallbackAlt) {
+  const lines = content.split("\n");
+  const stills = getMarkdownImageLines(content).filter(
+    (image) =>
+      image.alt.toLowerCase().startsWith("video still") ||
+      image.url.includes("/article-stills/"),
+  );
+  const still = stills[stillIndex];
+
+  if (!still) {
+    throw new Error("That video still could not be found.");
+  }
+
+  lines[still.index] = `![${still.alt || fallbackAlt}](${replacementUrl})`;
+
+  return lines.join("\n");
+}
+
 function normalizeHeading(line) {
   return line.replace(/^#{1,6}\s+/, "").replaceAll("**", "").trim().toLowerCase();
 }
@@ -762,6 +795,193 @@ async function processArticle(supabase, article, options) {
   }
 }
 
+async function extractReplacementStill(supabase, article, stillIndex, options, jobId) {
+  const { videoId, videoUrl } = getArticleVideo(article);
+
+  if (!videoId || !videoUrl) {
+    throw new Error("This review does not have a matched YouTube video.");
+  }
+
+  const tempDir = await mkdtemp(path.join(tmpdir(), "runplayback-still-job-"));
+
+  try {
+    const videoInfo = await getVideoInfo(videoUrl, options);
+    const duration = Number(videoInfo.duration || 0);
+    const timestamps = getFrameTimestamps(duration, options.count);
+    const timestamp = timestamps[stillIndex];
+
+    if (!timestamp) {
+      throw new Error("Could not calculate a timestamp for this still.");
+    }
+
+    const directVideoUrl = await getDirectVideoUrl(videoUrl, options);
+    const bestFrame = await chooseBestTimestamp({
+      candidateCount: options.candidates,
+      directVideoUrl,
+      duration,
+      sampleWindow: options.sampleWindow,
+      timestamp,
+      zoom: options.zoom,
+    });
+    const zoomLabel = `z${String(options.zoom).replace(".", "p")}`;
+    const fileName = `${videoId}-${String(stillIndex + 1).padStart(2, "0")}-${jobId}-${zoomLabel}.jpg`;
+    const filePath = path.join(tempDir, fileName);
+    const objectPath = `${videoId}/${fileName}`;
+
+    await extractFrame({
+      directVideoUrl,
+      outputPath: filePath,
+      timestamp: bestFrame.timestamp,
+      zoom: options.zoom,
+    });
+
+    const url = await uploadStill({
+      bucket: options.bucket,
+      filePath,
+      objectPath,
+      supabase,
+    });
+
+    return {
+      alt: `Video still from ${article.title} at ${formatTimestamp(bestFrame.timestamp)}`,
+      targetTimestamp: timestamp,
+      timestamp: bestFrame.timestamp,
+      url,
+    };
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+}
+
+async function fetchQueuedStillJobs(supabase, limit) {
+  const { data, error } = await supabase
+    .from("video_still_jobs")
+    .select(
+      "id,still_index,articles(id,title,slug,content,status,published_at,videos(youtube_video_id,video_url,title))",
+    )
+    .eq("status", "queued")
+    .order("created_at", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
+async function updateStillJob(supabase, id, values) {
+  const { error } = await supabase
+    .from("video_still_jobs")
+    .update({
+      ...values,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+}
+
+async function processQueuedStillJobs(supabase, options, limit) {
+  const jobs = await fetchQueuedStillJobs(supabase, limit || 10);
+  let processed = 0;
+  let failed = 0;
+
+  console.log(`Queued still jobs found: ${jobs.length}`);
+
+  for (const [index, job] of jobs.entries()) {
+    const article = Array.isArray(job.articles) ? job.articles[0] : job.articles;
+
+    if (!article) {
+      failed += 1;
+      await updateStillJob(supabase, job.id, {
+        error_message: "Review not found.",
+        status: "failed",
+      });
+      continue;
+    }
+
+    try {
+      console.log(`\n${article.title}`);
+      console.log(`Regenerating still ${job.still_index + 1}/${options.count}`);
+
+      await updateStillJob(supabase, job.id, {
+        error_message: null,
+        status: "processing",
+      });
+
+      if (!options.apply) {
+        console.log("Dry run: no replacement still generated.");
+        processed += 1;
+        continue;
+      }
+
+      const replacement = await extractReplacementStill(
+        supabase,
+        article,
+        job.still_index,
+        options,
+        job.id,
+      );
+      const nextContent = replaceVideoStillUrl(
+        article.content || "",
+        job.still_index,
+        replacement.url,
+        replacement.alt,
+      );
+      const { error: articleError } = await supabase
+        .from("articles")
+        .update({
+          content: nextContent,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", article.id);
+
+      if (articleError) {
+        throw articleError;
+      }
+
+      await updateStillJob(supabase, job.id, {
+        error_message: null,
+        processed_at: new Date().toISOString(),
+        replacement_url: replacement.url,
+        status: "done",
+      });
+
+      console.log(
+        `Updated still ${job.still_index + 1} at ${formatTimestamp(replacement.timestamp)} ` +
+          `(target ${formatTimestamp(replacement.targetTimestamp)})`,
+      );
+      processed += 1;
+    } catch (error) {
+      failed += 1;
+      const cause = error?.cause?.message || error?.cause?.code || "";
+      const message = `${error.message}${cause ? `; cause: ${cause}` : ""}`;
+
+      console.log(`Failed: ${message}`);
+      await updateStillJob(supabase, job.id, {
+        error_message: message,
+        processed_at: new Date().toISOString(),
+        status: "failed",
+      });
+
+      if (!options.continueOnError || failed >= options.maxErrors) {
+        throw error;
+      }
+    }
+
+    if (options.sleepSeconds && index < jobs.length - 1) {
+      console.log(`Pausing ${options.sleepSeconds} seconds before the next job...`);
+      await sleep(options.sleepSeconds * 1000);
+    }
+  }
+
+  console.log(`\nProcessed jobs: ${processed}`);
+  console.log(`Failed jobs: ${failed}`);
+}
+
 async function main() {
   loadEnv();
 
@@ -783,6 +1003,7 @@ async function main() {
     force: hasFlag("force"),
     continueOnError: hasFlag("continue-on-error") || hasFlag("all"),
     maxErrors: Number(getArg("max-errors", "20")) || 20,
+    processQueue: hasFlag("process-queue"),
     reflowOnly: hasFlag("reflow-only"),
     sampleWindow:
       Number(getArg("sample-window", String(defaultSampleWindow))) ||
@@ -817,9 +1038,17 @@ async function main() {
   if (options.reflowOnly) {
     console.log("Reflow only: yes, existing stills will be moved without downloading videos");
   }
+  if (options.processQueue) {
+    console.log("Queue mode: processing requested still regenerations");
+  }
 
   if (options.apply) {
     await ensureBucket(supabase, options.bucket);
+  }
+
+  if (options.processQueue) {
+    await processQueuedStillJobs(supabase, options, limit || 10);
+    return;
   }
 
   let articles = await fetchArticles(supabase, { slug });

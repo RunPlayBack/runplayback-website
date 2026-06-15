@@ -53,6 +53,18 @@ create table if not exists public.youtube_oauth_tokens (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.video_still_jobs (
+  id uuid primary key default gen_random_uuid(),
+  article_id uuid not null references public.articles(id) on delete cascade,
+  still_index integer not null check (still_index >= 0 and still_index <= 3),
+  status text not null default 'queued' check (status in ('queued', 'processing', 'done', 'failed')),
+  replacement_url text,
+  error_message text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  processed_at timestamptz
+);
+
 create or replace function public.is_admin()
 returns boolean
 language sql
@@ -72,6 +84,7 @@ alter table public.articles enable row level security;
 alter table public.affiliate_links enable row level security;
 alter table public.admins enable row level security;
 alter table public.youtube_oauth_tokens enable row level security;
+alter table public.video_still_jobs enable row level security;
 
 create policy "Published articles are readable by everyone"
 on public.articles
@@ -173,6 +186,13 @@ using (public.is_admin());
 
 create policy "Admins can manage YouTube OAuth tokens"
 on public.youtube_oauth_tokens
+for all
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "Admins can manage video still jobs"
+on public.video_still_jobs
 for all
 to authenticated
 using (public.is_admin())

@@ -853,6 +853,22 @@ button {
   color: #17613c;
 }
 
+.status.queued,
+.status.processing {
+  background: #fff7d7;
+  color: #725400;
+}
+
+.status.failed {
+  background: #fff0f0;
+  color: #9a1f1f;
+}
+
+.status.done {
+  background: #e2f5e7;
+  color: #17613c;
+}
+
 .site-footer {
   margin: 0 auto;
   max-width: 860px;
@@ -1176,6 +1192,14 @@ button {
   display: grid;
   gap: 14px;
   padding: 14px;
+}
+
+.video-still-card-header {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin-bottom: 8px;
 }
 
 .video-still-preview {

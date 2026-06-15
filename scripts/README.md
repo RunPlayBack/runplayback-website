@@ -241,6 +241,18 @@ npm run import:video-stills -- --video-id=your-youtube-video-id --apply --force 
 The Admin page at `/admin/video-stills` shows which reviews already have four
 video stills and which still need them.
 
+The still editor at `/admin/video-stills/[article-id]` can queue one still or
+all four stills for regeneration. After queueing jobs in Admin, process them
+locally:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run process:video-stills -- --apply --limit=10 --continue-on-error --cookies-from-browser=chrome
+```
+
+If a generated still is still not right, queue that same still again and rerun
+the command. Manual URL replacement remains available as a fallback.
+
 ## Backfill Article Authors
 
 After running `supabase/article-authors.sql` in Supabase, use the thumbnail-based

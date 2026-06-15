@@ -20,6 +20,10 @@ function redirectWithError(articleId: string, error: unknown): never {
   redirect(addStatusToPath(`/admin/video-stills/${articleId}`, "error", message));
 }
 
+function redirectWithMessage(articleId: string, key: string, value: string): never {
+  redirect(addStatusToPath(`/admin/video-stills/${articleId}`, key, value));
+}
+
 function getMarkdownImageLines(content: string) {
   return content.split("\n").map((line, index) => {
     const match = line
@@ -113,4 +117,78 @@ export async function replaceArticleVideoStill(articleId: string, formData: Form
   revalidatePath("/articles");
   revalidatePath(`/articles/${article.slug}`);
   redirect(addStatusToPath(`/admin/video-stills/${article.id}`, "saved", "1"));
+}
+
+export async function queueArticleVideoStillRegeneration(
+  articleId: string,
+  formData: FormData,
+) {
+  const stillIndex = Number(getString(formData, "stillIndex"));
+  const supabase = await createClient();
+
+  if (!supabase) {
+    redirect("/admin/login");
+  }
+
+  if (!Number.isInteger(stillIndex) || stillIndex < 0 || stillIndex > 3) {
+    redirectWithError(articleId, new Error("Choose a valid still to regenerate."));
+  }
+
+  const { error: deleteError } = await supabase
+    .from("video_still_jobs")
+    .delete()
+    .eq("article_id", articleId)
+    .eq("still_index", stillIndex)
+    .in("status", ["queued", "failed"]);
+
+  if (deleteError) {
+    redirectWithError(articleId, deleteError);
+  }
+
+  const { error } = await supabase.from("video_still_jobs").insert({
+    article_id: articleId,
+    still_index: stillIndex,
+    status: "queued",
+  });
+
+  if (error) {
+    redirectWithError(articleId, error);
+  }
+
+  revalidatePath("/admin/video-stills");
+  revalidatePath(`/admin/video-stills/${articleId}`);
+  redirectWithMessage(articleId, "queued", "1");
+}
+
+export async function queueAllArticleVideoStillsRegeneration(articleId: string) {
+  const supabase = await createClient();
+
+  if (!supabase) {
+    redirect("/admin/login");
+  }
+
+  const { error: deleteError } = await supabase
+    .from("video_still_jobs")
+    .delete()
+    .eq("article_id", articleId)
+    .in("status", ["queued", "failed"]);
+
+  if (deleteError) {
+    redirectWithError(articleId, deleteError);
+  }
+
+  const jobs = Array.from({ length: 4 }, (_, stillIndex) => ({
+    article_id: articleId,
+    still_index: stillIndex,
+    status: "queued",
+  }));
+  const { error } = await supabase.from("video_still_jobs").insert(jobs);
+
+  if (error) {
+    redirectWithError(articleId, error);
+  }
+
+  revalidatePath("/admin/video-stills");
+  revalidatePath(`/admin/video-stills/${articleId}`);
+  redirectWithMessage(articleId, "queued", "all");
 }

@@ -3,7 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminLayout } from "@/components/AdminLayout";
 import { createClient } from "@/lib/supabase/server";
-import { replaceArticleVideoStill } from "../actions";
+import {
+  queueAllArticleVideoStillsRegeneration,
+  queueArticleVideoStillRegeneration,
+  replaceArticleVideoStill,
+} from "../actions";
 
 type VideoStillEditorPageProps = {
   params: Promise<{
@@ -11,6 +15,7 @@ type VideoStillEditorPageProps = {
   }>;
   searchParams?: Promise<{
     error?: string;
+    queued?: string;
     saved?: string;
   }>;
 };
@@ -39,6 +44,13 @@ type VideoStill = {
   url: string;
 };
 
+type VideoStillJob = {
+  error_message: string | null;
+  replacement_url: string | null;
+  status: "done" | "failed" | "processing" | "queued";
+  still_index: number;
+};
+
 const targetStillCount = 4;
 
 function getVideoStills(content: string) {
@@ -59,7 +71,11 @@ function getVideo(article: ArticleRow) {
   return Array.isArray(article.videos) ? article.videos[0] : article.videos;
 }
 
-function getStatusMessage(searchParams?: { error?: string; saved?: string }) {
+function getStatusMessage(searchParams?: {
+  error?: string;
+  queued?: string;
+  saved?: string;
+}) {
   if (searchParams?.error) {
     return { className: "form-error", text: searchParams.error };
   }
@@ -68,24 +84,60 @@ function getStatusMessage(searchParams?: { error?: string; saved?: string }) {
     return { className: "form-success", text: "Video still saved." };
   }
 
+  if (searchParams?.queued === "all") {
+    return { className: "form-success", text: "All four stills were queued." };
+  }
+
+  if (searchParams?.queued) {
+    return { className: "form-success", text: "Video still regeneration queued." };
+  }
+
   return null;
+}
+
+function getLatestJobForStill(jobs: VideoStillJob[], stillIndex: number) {
+  return jobs.find((job) => job.still_index === stillIndex) || null;
+}
+
+function getJobStatusText(job: VideoStillJob | null) {
+  if (!job) {
+    return "Ready";
+  }
+
+  if (job.status === "done") {
+    return "Updated";
+  }
+
+  if (job.status === "failed") {
+    return "Failed";
+  }
+
+  return job.status === "processing" ? "Processing" : "Queued";
 }
 
 function StillCard({
   articleId,
   index,
+  job,
   still,
 }: {
   articleId: string;
   index: number;
+  job: VideoStillJob | null;
   still: VideoStill;
 }) {
   const replaceStillWithId = replaceArticleVideoStill.bind(null, articleId);
+  const queueStillWithId = queueArticleVideoStillRegeneration.bind(null, articleId);
 
   return (
     <div className="video-still-card">
       <div>
-        <p className="meta">Still {index + 1}</p>
+        <div className="video-still-card-header">
+          <p className="meta">Still {index + 1}</p>
+          <span className={`status ${job?.status || "published"}`}>
+            {getJobStatusText(job)}
+          </span>
+        </div>
         <Image
           alt={still.alt || `Video still ${index + 1}`}
           className="video-still-preview"
@@ -94,7 +146,16 @@ function StillCard({
           unoptimized
           width={640}
         />
+        {job?.error_message ? (
+          <p className="form-error">{job.error_message}</p>
+        ) : null}
       </div>
+      <form action={queueStillWithId} className="video-still-form">
+        <input name="stillIndex" type="hidden" value={index} />
+        <button className="button secondary-button" type="submit">
+          Regenerate Still
+        </button>
+      </form>
       <form action={replaceStillWithId} className="video-still-form">
         <input name="stillIndex" type="hidden" value={index} />
         <label>
@@ -140,9 +201,17 @@ export default async function VideoStillEditorPage({
     notFound();
   }
 
+  const { data: jobs } = await supabase
+    .from("video_still_jobs")
+    .select("still_index,status,replacement_url,error_message,created_at")
+    .eq("article_id", article.id)
+    .order("created_at", { ascending: false })
+    .returns<(VideoStillJob & { created_at: string })[]>();
+
   const video = getVideo(article);
   const statusMessage = getStatusMessage(resolvedSearchParams);
   const stills = getVideoStills(article.content);
+  const queueAllWithId = queueAllArticleVideoStillsRegeneration.bind(null, article.id);
 
   return (
     <AdminLayout>
@@ -185,6 +254,15 @@ export default async function VideoStillEditorPage({
         {video?.youtube_video_id ? (
           <p className="meta">YouTube video: {video.youtube_video_id}</p>
         ) : null}
+        <form action={queueAllWithId} className="actions">
+          <button className="button" type="submit">
+            Regenerate All 4
+          </button>
+        </form>
+        <pre className="admin-command">
+{`cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run process:video-stills -- --apply --limit=10 --continue-on-error --cookies-from-browser=chrome`}
+        </pre>
       </div>
       <div className="video-still-grid">
         {stills.length ? (
@@ -193,6 +271,7 @@ export default async function VideoStillEditorPage({
               articleId={article.id}
               index={index}
               key={`${still.url}-${index}`}
+              job={getLatestJobForStill(jobs || [], index)}
               still={still}
             />
           ))
