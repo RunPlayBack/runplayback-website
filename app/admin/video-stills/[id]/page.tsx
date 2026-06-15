@@ -261,7 +261,7 @@ export default async function VideoStillEditorPage({
         </form>
         <pre className="admin-command">
 {`cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
-npm run process:video-stills -- --apply --limit=10 --continue-on-error --cookies-from-browser=chrome`}
+npm run process:video-stills -- --apply --limit=10 --continue-on-error --cookies-from-browser=chrome --candidates=11 --sample-window=150`}
         </pre>
       </div>
       <div className="video-still-grid">

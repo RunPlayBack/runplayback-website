@@ -247,7 +247,7 @@ locally:
 
 ```bash
 cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
-npm run process:video-stills -- --apply --limit=10 --continue-on-error --cookies-from-browser=chrome
+npm run process:video-stills -- --apply --limit=10 --continue-on-error --cookies-from-browser=chrome --candidates=11 --sample-window=150
 ```
 
 If a generated still is still not right, queue that same still again and rerun

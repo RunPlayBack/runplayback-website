@@ -145,6 +145,16 @@ function formatTimestamp(seconds) {
   return `${minutes}:${String(remainder).padStart(2, "0")}`;
 }
 
+function parseTimestamp(value = "") {
+  const match = value.match(/\b(\d{1,2}):([0-5]\d)\b/);
+
+  if (!match) {
+    return null;
+  }
+
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
 function getSafeZoom(value) {
   const zoom = Number(value) || defaultZoom;
 
@@ -322,6 +332,12 @@ function getExistingVideoStills(content) {
       image.alt.toLowerCase().startsWith("video still") ||
       image.url.includes("/article-stills/"),
   );
+}
+
+function getExistingVideoStillTimestamps(content) {
+  return getExistingVideoStills(content)
+    .map((image) => parseTimestamp(image.alt))
+    .filter((timestamp) => Number.isFinite(timestamp));
 }
 
 function removeExistingVideoStills(content) {
@@ -594,22 +610,31 @@ async function chooseBestTimestamp({
   candidateCount,
   directVideoUrl,
   duration,
+  excludedTimestamps = [],
+  minDistanceFromExcluded = 0,
   sampleWindow,
   timestamp,
   zoom,
 }) {
-  const candidates = getCandidateTimestamps(
+  const allCandidates = getCandidateTimestamps(
     timestamp,
     duration,
     candidateCount,
     sampleWindow,
   );
+  const candidates = allCandidates.filter((candidate) =>
+    excludedTimestamps.every(
+      (excludedTimestamp) =>
+        Math.abs(candidate - excludedTimestamp) >= minDistanceFromExcluded,
+    ),
+  );
+  const candidatePool = candidates.length ? candidates : allCandidates;
   let best = {
     score: -Infinity,
     timestamp,
   };
 
-  for (const candidate of candidates) {
+  for (const candidate of candidatePool) {
     try {
       const buffer = await extractPreviewFrame({
         directVideoUrl,
@@ -809,6 +834,12 @@ async function extractReplacementStill(supabase, article, stillIndex, options, j
     const duration = Number(videoInfo.duration || 0);
     const timestamps = getFrameTimestamps(duration, options.count);
     const timestamp = timestamps[stillIndex];
+    const existingTimestamps = [
+      ...getExistingVideoStillTimestamps(article.content || ""),
+      timestamp,
+    ];
+    const replacementCandidateCount = Math.max(options.candidates, 11);
+    const replacementSampleWindow = Math.max(options.sampleWindow, 150);
 
     if (!timestamp) {
       throw new Error("Could not calculate a timestamp for this still.");
@@ -816,10 +847,12 @@ async function extractReplacementStill(supabase, article, stillIndex, options, j
 
     const directVideoUrl = await getDirectVideoUrl(videoUrl, options);
     const bestFrame = await chooseBestTimestamp({
-      candidateCount: options.candidates,
+      candidateCount: replacementCandidateCount,
       directVideoUrl,
       duration,
-      sampleWindow: options.sampleWindow,
+      excludedTimestamps: existingTimestamps,
+      minDistanceFromExcluded: 18,
+      sampleWindow: replacementSampleWindow,
       timestamp,
       zoom: options.zoom,
     });
