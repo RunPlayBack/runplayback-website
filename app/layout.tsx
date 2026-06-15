@@ -52,7 +52,6 @@ const navItems = [
   { href: "/articles", label: "Reviews" },
   { href: "/partner", label: "Partner" },
   { href: "/popularvideos", label: "Popular Videos" },
-  { href: "/search", label: "Search" },
   { href: "/contact", label: "Contact" },
 ];
 
@@ -150,10 +149,25 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
         <header className="site-header">
-          <Link className="brand" href="/" aria-label="RunPlayBack home">
-            RunPlayBack
-          </Link>
-          <p className="tagline">EV Lifestyle Tech Tips</p>
+          <div className="header-topline">
+            <Link className="brand" href="/" aria-label="RunPlayBack home">
+              <img src="/images/rpb-brush-logo.png" alt="RunPlayBack" />
+            </Link>
+            <form action="/search" className="header-search" method="get">
+              <label className="sr-only" htmlFor="site-search">
+                Search RunPlayBack
+              </label>
+              <input
+                id="site-search"
+                name="q"
+                placeholder="Search"
+                type="search"
+              />
+              <button aria-label="Search" type="submit">
+                ⌕
+              </button>
+            </form>
+          </div>
           <nav className="site-nav" aria-label="Main navigation">
             {navItems.map((item) => (
               <Link key={item.href} href={item.href}>

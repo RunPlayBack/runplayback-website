@@ -394,6 +394,41 @@ function replaceVideoStillUrl(content, stillIndex, replacementUrl, fallbackAlt) 
   return lines.join("\n");
 }
 
+function replaceOrInsertVideoStill(content, stillIndex, replacement, stillCount) {
+  try {
+    return {
+      content: replaceVideoStillUrl(
+        content,
+        stillIndex,
+        replacement.url,
+        replacement.alt,
+      ),
+      mode: "replaced",
+    };
+  } catch (error) {
+    if (error.message !== "That video still could not be found.") {
+      throw error;
+    }
+  }
+
+  const safeStillCount = Math.max(defaultStillCount, stillCount, stillIndex + 1);
+  const existingStills = getExistingVideoStills(content).slice(0, safeStillCount);
+  const nextStills = Array.from(
+    { length: safeStillCount },
+    (_, index) => existingStills[index] || null,
+  );
+
+  nextStills[stillIndex] = {
+    alt: replacement.alt,
+    url: replacement.url,
+  };
+
+  return {
+    content: distributeVideoStills(content, nextStills.filter(Boolean)),
+    mode: "inserted",
+  };
+}
+
 function normalizeHeading(line) {
   return line.replace(/^#{1,6}\s+/, "").replaceAll("**", "").trim().toLowerCase();
 }
@@ -886,21 +921,44 @@ async function extractReplacementStill(supabase, article, stillIndex, options, j
   }
 }
 
-async function fetchQueuedStillJobs(supabase, limit) {
-  const { data, error } = await supabase
+async function fetchQueuedStillJobs(supabase, limit, options) {
+  let query = supabase
     .from("video_still_jobs")
     .select(
       "id,still_index,articles(id,title,slug,content,status,published_at,videos(youtube_video_id,video_url,title))",
     )
-    .eq("status", "queued")
     .order("created_at", { ascending: true })
     .limit(limit);
+
+  if (options.retryFailed) {
+    query = query.in("status", ["queued", "failed"]);
+  } else {
+    query = query.eq("status", "queued");
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw error;
   }
 
   return data || [];
+}
+
+async function fetchArticleById(supabase, articleId) {
+  const { data, error } = await supabase
+    .from("articles")
+    .select(
+      "id,title,slug,content,status,published_at,videos(youtube_video_id,video_url,title)",
+    )
+    .eq("id", articleId)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
 }
 
 async function updateStillJob(supabase, id, values) {
@@ -918,11 +976,13 @@ async function updateStillJob(supabase, id, values) {
 }
 
 async function processQueuedStillJobs(supabase, options, limit) {
-  const jobs = await fetchQueuedStillJobs(supabase, limit || 10);
+  const jobs = await fetchQueuedStillJobs(supabase, limit || 10, options);
   let processed = 0;
   let failed = 0;
 
-  console.log(`Queued still jobs found: ${jobs.length}`);
+  console.log(
+    `${options.retryFailed ? "Queued/failed" : "Queued"} still jobs found: ${jobs.length}`,
+  );
 
   for (const [index, job] of jobs.entries()) {
     const article = Array.isArray(job.articles) ? job.articles[0] : job.articles;
@@ -958,16 +1018,17 @@ async function processQueuedStillJobs(supabase, options, limit) {
         options,
         job.id,
       );
-      const nextContent = replaceVideoStillUrl(
-        article.content || "",
+      const latestArticle = await fetchArticleById(supabase, article.id);
+      const nextStillResult = replaceOrInsertVideoStill(
+        latestArticle.content || "",
         job.still_index,
-        replacement.url,
-        replacement.alt,
+        replacement,
+        options.count,
       );
       const { error: articleError } = await supabase
         .from("articles")
         .update({
-          content: nextContent,
+          content: nextStillResult.content,
           updated_at: new Date().toISOString(),
         })
         .eq("id", article.id);
@@ -984,7 +1045,7 @@ async function processQueuedStillJobs(supabase, options, limit) {
       });
 
       console.log(
-        `Updated still ${job.still_index + 1} at ${formatTimestamp(replacement.timestamp)} ` +
+        `${nextStillResult.mode === "inserted" ? "Inserted" : "Updated"} still ${job.still_index + 1} at ${formatTimestamp(replacement.timestamp)} ` +
           `(target ${formatTimestamp(replacement.targetTimestamp)})`,
       );
       processed += 1;
@@ -1038,6 +1099,7 @@ async function main() {
     maxErrors: Number(getArg("max-errors", "20")) || 20,
     processQueue: hasFlag("process-queue"),
     reflowOnly: hasFlag("reflow-only"),
+    retryFailed: hasFlag("retry-failed"),
     sampleWindow:
       Number(getArg("sample-window", String(defaultSampleWindow))) ||
       defaultSampleWindow,
@@ -1073,6 +1135,9 @@ async function main() {
   }
   if (options.processQueue) {
     console.log("Queue mode: processing requested still regenerations");
+    if (options.retryFailed) {
+      console.log("Retry failed jobs: yes");
+    }
   }
 
   if (options.apply) {
