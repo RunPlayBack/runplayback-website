@@ -909,7 +909,13 @@ function addFallbackArticleImage(
     articleImageReplacements.get(slug) ||
     videoThumbnailImageReplacements.get(youtubeVideoId);
 
-  if (!fallbackImageUrl || blocks.some((block) => block.type === "image")) {
+  if (
+    !fallbackImageUrl ||
+    blocks.some(
+      (block) =>
+        block.type === "image" && !isVideoStillImage(block.alt, block.src),
+    )
+  ) {
     return blocks;
   }
 
@@ -934,6 +940,97 @@ function addFallbackArticleImage(
     },
     ...blocks.slice(firstParagraphIndex + 1),
   ];
+}
+
+function shouldStopVideoStillReflowAtHeading(heading: string) {
+  return (
+    heading === "links" ||
+    heading === "related reviews" ||
+    heading === "watch the video" ||
+    heading === "video" ||
+    heading.startsWith("video chapters")
+  );
+}
+
+function shouldSkipVideoStillHeading(heading: string) {
+  return (
+    !heading ||
+    heading === "intro" ||
+    heading === "introduction" ||
+    heading === "final thoughts" ||
+    heading === "final verdict" ||
+    heading === "conclusion"
+  );
+}
+
+function reflowVideoStillBlocks(blocks: ArticleBlock[]) {
+  const videoStillBlocks = blocks.filter(
+    (block) => block.type === "image" && isVideoStillImage(block.alt, block.src),
+  );
+
+  if (!videoStillBlocks.length) {
+    return blocks;
+  }
+
+  const baseBlocks = blocks.filter(
+    (block) => !(block.type === "image" && isVideoStillImage(block.alt, block.src)),
+  );
+  const stopIndex = baseBlocks.findIndex(
+    (block) =>
+      block.type === "heading" &&
+      shouldStopVideoStillReflowAtHeading(normalizeHeading(block.text)),
+  );
+  const bodyEndIndex = stopIndex === -1 ? baseBlocks.length : stopIndex;
+  const headingIndexes: number[] = [];
+  let hasSeenBodyText = false;
+
+  baseBlocks.slice(0, bodyEndIndex).forEach((block, index) => {
+    if (block.type === "heading") {
+      const heading = normalizeHeading(block.text);
+
+      if (hasSeenBodyText && !shouldSkipVideoStillHeading(heading)) {
+        headingIndexes.push(index);
+      }
+
+      return;
+    }
+
+    if (
+      (block.type === "paragraph" || block.type === "list") &&
+      !block.className?.includes("article-compact-links") &&
+      block.text.trim().length > 80
+    ) {
+      hasSeenBodyText = true;
+    }
+  });
+
+  if (!headingIndexes.length) {
+    return blocks;
+  }
+
+  const stillsToPlace = videoStillBlocks.slice(
+    0,
+    Math.min(videoStillBlocks.length, headingIndexes.length),
+  );
+  const insertions = new Map<number, ArticleBlock[]>();
+
+  stillsToPlace.forEach((still, index) => {
+    const targetPosition = Math.floor(
+      ((index + 1) * headingIndexes.length) / (stillsToPlace.length + 1),
+    );
+    const targetIndex =
+      headingIndexes[Math.min(headingIndexes.length - 1, targetPosition)];
+    const existing = insertions.get(targetIndex) || [];
+
+    existing.push(still);
+    insertions.set(targetIndex, existing);
+  });
+
+  return baseBlocks.flatMap((block, index) => {
+    const insertedBlocks = insertions.get(index) || [];
+
+    return insertedBlocks.length ? [...insertedBlocks, block] : [block];
+  });
 }
 
 function formatArticleDate(value: string | null) {
@@ -1028,15 +1125,17 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
       platform: "email" as const,
     },
   ];
-  const articleBlocks = addFallbackArticleImage(
-    buildArticleBlocks(
-      article.content,
-      article.featuredImageUrl,
+  const articleBlocks = reflowVideoStillBlocks(
+    addFallbackArticleImage(
+      buildArticleBlocks(
+        article.content,
+        article.featuredImageUrl,
+        article.video?.youtubeVideoId,
+      ),
+      article.slug,
       article.video?.youtubeVideoId,
+      article.title,
     ),
-    article.slug,
-    article.video?.youtubeVideoId,
-    article.title,
   );
   const firstBodyLinksBlockIndex = articleBlocks.findIndex(
     (block) => block.type === "heading" && normalizeHeading(block.text) === "links",

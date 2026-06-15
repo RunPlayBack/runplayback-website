@@ -138,9 +138,12 @@ from the saved official product links.
 
 ## Import Video Stills Into Reviews
 
-The video still importer extracts six evenly spaced frames from each matched
-YouTube video, uploads them to the public `article-stills` Supabase Storage
-bucket, and inserts them throughout the matching review.
+The video still importer divides each matched YouTube video into six sections,
+samples several nearby frames in each section, picks the clearest frame with
+the strongest center detail, uploads it to the public `article-stills`
+Supabase Storage bucket, and inserts the stills above section headings in the
+matching review. Stills are not inserted below Related Reviews, Links, or video
+sections.
 
 This is intentionally a background script instead of a normal Admin button
 because extracting frames requires `yt-dlp` and `ffmpeg`, and can take several
@@ -166,6 +169,21 @@ cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
 npm run import:video-stills -- --limit=5 --apply
 ```
 
+Run all remaining reviews with pauses between each article, while continuing
+past individual YouTube/yt-dlp failures:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run import:video-stills -- --all --apply --cookies-from-browser=chrome --candidates=9 --sample-window=90 --sleep=45 --continue-on-error
+```
+
+If YouTube starts pushing back, use a longer pause:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run import:video-stills -- --all --apply --cookies-from-browser=chrome --candidates=9 --sample-window=90 --sleep=120 --continue-on-error
+```
+
 Run one specific review by slug:
 
 ```bash
@@ -178,6 +196,46 @@ Replace existing video stills for a review:
 ```bash
 cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
 npm run import:video-stills -- --slug=your-review-slug --apply --force
+```
+
+Fix placement for reviews that already have video stills without downloading
+the videos again:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run import:video-stills -- --all --apply --reflow-only --continue-on-error
+```
+
+The default is full-frame with no crop. If a specific video still feels too far
+away, you can manually add a tighter crop:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run import:video-stills -- --slug=your-review-slug --apply --force --zoom=1.7
+```
+
+If the image feels too tight, use a softer crop or go back to full-frame:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run import:video-stills -- --slug=your-review-slug --apply --force --zoom=1.25
+```
+
+By default, each still tests five candidate frames across a 60-second window.
+For videos where the rider/product moves through frame quickly, give the script
+more choices:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run import:video-stills -- --slug=your-review-slug --apply --force --candidates=9 --sample-window=90
+```
+
+If YouTube asks `yt-dlp` to prove it is not a bot, let it use your signed-in
+browser session:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run import:video-stills -- --video-id=your-youtube-video-id --apply --force --candidates=9 --sample-window=90 --cookies-from-browser=chrome
 ```
 
 The Admin page at `/admin/video-stills` shows which reviews already have six
