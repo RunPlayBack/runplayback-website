@@ -1684,6 +1684,15 @@ button {
     min-height: 0;
   }
 
+  .home-hero-image {
+    display: block;
+  }
+
+  .home-hero-image img {
+    flex: none;
+    height: auto;
+  }
+
   .home-latest-row {
     gap: 24px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
