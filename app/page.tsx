@@ -29,7 +29,6 @@ export default async function Home() {
     <main className="home-page">
       <section className="home-feature-grid" aria-label="Featured RunPlayBack content">
         <aside className="home-popular-card">
-          <p>Featured</p>
           <h2>Popular Videos</h2>
           <div className="home-popular-links">
             {featuredVideos.map((video) => (

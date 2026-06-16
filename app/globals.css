@@ -166,14 +166,17 @@ button {
 }
 
 .home-feature-grid {
+  background: #ffffff;
   display: grid;
+  gap: 1px;
   grid-template-columns: 210px minmax(0, 1.4fr) minmax(300px, 0.85fr);
+  overflow: hidden;
 }
 
 .home-popular-card {
-  background: #f47a26;
+  background: #000000;
   border-radius: 0 14px 14px 0;
-  color: #111111;
+  color: #ffffff;
   display: flex;
   flex-direction: column;
   padding: 26px 22px;
@@ -196,14 +199,14 @@ button {
 }
 
 .home-popular-links {
-  border-top: 1px dotted rgba(17, 17, 17, 0.34);
+  border-top: 1px dotted rgba(255, 255, 255, 0.34);
   display: grid;
   gap: 0;
   margin-top: 28px;
 }
 
 .home-popular-links a {
-  border-bottom: 1px dotted rgba(17, 17, 17, 0.34);
+  border-bottom: 1px dotted rgba(255, 255, 255, 0.34);
   font-size: 0.92rem;
   font-weight: 800;
   line-height: 1.2;
@@ -227,7 +230,7 @@ button {
   display: block;
   height: 100%;
   min-height: 430px;
-  object-fit: cover;
+  object-fit: contain;
   transition: transform 220ms ease;
   width: 100%;
 }
@@ -239,6 +242,7 @@ button {
 
 .home-hero-copy {
   background: #f47a26;
+  border-radius: 0 14px 14px 0;
   color: #111111;
   display: flex;
   flex-direction: column;
@@ -277,8 +281,9 @@ button {
 }
 
 .home-latest-row {
+  background: #ffffff;
   display: grid;
-  gap: 0;
+  gap: 1px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-left: 210px;
 }
@@ -1626,6 +1631,10 @@ button {
   }
 
   .home-popular-card {
+    border-radius: 14px;
+  }
+
+  .home-hero-copy {
     border-radius: 14px;
   }
 
