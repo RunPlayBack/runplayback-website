@@ -355,6 +355,25 @@ button {
   text-transform: uppercase;
 }
 
+.article-kicker {
+  margin-bottom: 8px;
+}
+
+.article-kicker-category {
+  color: var(--ink);
+  display: inline-flex;
+  font-size: 0.9rem;
+  font-weight: 800;
+  margin: 0 0 28px;
+  text-decoration: underline;
+  text-transform: uppercase;
+  text-underline-offset: 3px;
+}
+
+.article-kicker-category:hover {
+  color: var(--orange);
+}
+
 .hero-image {
   aspect-ratio: 16 / 9;
   display: block;

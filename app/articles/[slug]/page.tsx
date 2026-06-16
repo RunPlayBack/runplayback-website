@@ -1268,20 +1268,20 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
       />
       <article className="legacy-page">
-        <div className="page-kicker">
+        <div className="page-kicker article-kicker">
           <span>Review</span>
         </div>
+        <Link
+          className="article-kicker-category"
+          href={`/articles/categories/${articleCategory.slug}`}
+        >
+          {articleCategory.label}
+        </Link>
         {article.featuredImageUrl ? (
           <img className="hero-image" src={article.featuredImageUrl} alt="" />
         ) : null}
         <div className="copy article-content">
           <h1>{article.title}</h1>
-          <Link
-            className="category-link"
-            href={`/articles/categories/${articleCategory.slug}`}
-          >
-            {articleCategory.label}
-          </Link>
           <p className="article-author">Written by {article.authorName}</p>
           {article.displayPublishedAt ? (
             <p className="article-date">
