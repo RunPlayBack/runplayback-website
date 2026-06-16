@@ -155,8 +155,7 @@ export default function RootLayout({
                 <img src="/images/rpb-brush-logo.png" alt="RunPlayBack" />
               </Link>
               <p className="brand-statement">
-                We give DIVERSE recommendations on electric vehicle tech for a more
-                efficient and affordable lifestyle. Let's save money together!
+                Real EV reviews. Smarter purchases.
               </p>
             </div>
             <form action="/search" className="header-search" method="get">
