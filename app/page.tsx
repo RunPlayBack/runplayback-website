@@ -16,19 +16,21 @@ export const metadata: Metadata = {
   },
 };
 
-function getArticleBodyImages(article: PublicArticle) {
+function getArticleVideoStillImages(article: PublicArticle) {
   const imageMatches = Array.from(
-    article.content.matchAll(/!\[[^\]]*]\((https?:\/\/[^)\s]+)[^)]*\)/g),
+    article.content.matchAll(/!\[([^\]]*)]\((https?:\/\/[^)\s]+)[^)]*\)/g),
   );
   const images = imageMatches
-    .map((match) => match[1])
-    .filter((imageUrl) => !imageUrl.includes("img.youtube.com"))
-    .filter((imageUrl) => imageUrl !== article.featuredImageUrl);
+    .filter((match) => {
+      const alt = match[1]?.toLowerCase() || "";
+      const imageUrl = match[2] || "";
+
+      return alt.startsWith("video still") || imageUrl.includes("/article-stills/");
+    })
+    .map((match) => match[2]);
   const uniqueImages = Array.from(new Set(images));
 
-  return (uniqueImages.length ? uniqueImages : [article.featuredImageUrl])
-    .filter(Boolean)
-    .slice(0, 3);
+  return uniqueImages.filter(Boolean).slice(0, 3);
 }
 
 export default async function Home() {
@@ -39,7 +41,9 @@ export default async function Home() {
   const latestArticle = articles[0] || null;
   const latestFourArticles = articles.slice(1, 5);
   const featuredVideos = popularVideos.slice(0, 5);
-  const latestArticleImages = latestArticle ? getArticleBodyImages(latestArticle) : [];
+  const latestArticleImages = latestArticle
+    ? getArticleVideoStillImages(latestArticle)
+    : [];
 
   return (
     <main className="home-page">
@@ -61,9 +65,6 @@ export default async function Home() {
               className="home-hero-image"
               href={`/articles/${latestArticle.slug}`}
               aria-label={`Read ${latestArticle.title}`}
-              style={{
-                gridTemplateRows: `repeat(${Math.max(latestArticleImages.length, 1)}, minmax(0, 1fr))`,
-              }}
             >
               {latestArticleImages.map((imageUrl) => (
                 <img src={imageUrl} alt="" key={imageUrl} />

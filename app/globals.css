@@ -234,15 +234,18 @@ button {
 
 .home-hero-image {
   background: #ffffff;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 1px;
   min-height: 430px;
   overflow: hidden;
 }
 
 .home-hero-image img {
+  aspect-ratio: 16 / 9;
   display: block;
-  height: 100%;
+  flex: 1 1 0;
+  height: auto;
   min-height: 0;
   object-fit: cover;
   transition: transform 220ms ease;
