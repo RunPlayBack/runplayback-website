@@ -295,11 +295,11 @@ button {
 
 .home-latest-row {
   background: #ffffff;
-  border-top: 1px solid var(--line);
   display: grid;
   gap: 1px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-left: 210px;
+  padding-top: 1px;
 }
 
 .home-latest-row .article-card {
