@@ -150,9 +150,15 @@ export default function RootLayout({
         />
         <header className="site-header">
           <div className="header-topline">
-            <Link className="brand" href="/" aria-label="RunPlayBack home">
-              <img src="/images/rpb-brush-logo.png" alt="RunPlayBack" />
-            </Link>
+            <div className="brand-block">
+              <Link className="brand" href="/" aria-label="RunPlayBack home">
+                <img src="/images/rpb-brush-logo.png" alt="RunPlayBack" />
+              </Link>
+              <p className="brand-statement">
+                We give DIVERSE recommendations on electric vehicle tech for a more
+                efficient and affordable lifestyle. Let's save money together!
+              </p>
+            </div>
             <form action="/search" className="header-search" method="get">
               <label className="sr-only" htmlFor="site-search">
                 Search RunPlayBack
