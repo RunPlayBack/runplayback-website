@@ -233,8 +233,9 @@ button {
 }
 
 .home-hero-image {
-  background: #000000;
-  display: block;
+  background: #ffffff;
+  display: grid;
+  gap: 1px;
   min-height: 430px;
   overflow: hidden;
 }
@@ -242,8 +243,8 @@ button {
 .home-hero-image img {
   display: block;
   height: 100%;
-  min-height: 430px;
-  object-fit: contain;
+  min-height: 0;
+  object-fit: cover;
   transition: transform 220ms ease;
   width: 100%;
 }

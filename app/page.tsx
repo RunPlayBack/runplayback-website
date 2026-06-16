@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArticleCard, formatArticleDate } from "@/components/ArticleCard";
 import { articleCategories } from "@/lib/article-categories";
-import { getPublishedArticles } from "@/lib/articles";
+import { getPublishedArticles, type PublicArticle } from "@/lib/articles";
 import { getPopularVideos } from "@/lib/popular-videos";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +16,21 @@ export const metadata: Metadata = {
   },
 };
 
+function getArticleBodyImages(article: PublicArticle) {
+  const imageMatches = Array.from(
+    article.content.matchAll(/!\[[^\]]*]\((https?:\/\/[^)\s]+)[^)]*\)/g),
+  );
+  const images = imageMatches
+    .map((match) => match[1])
+    .filter((imageUrl) => !imageUrl.includes("img.youtube.com"))
+    .filter((imageUrl) => imageUrl !== article.featuredImageUrl);
+  const uniqueImages = Array.from(new Set(images));
+
+  return (uniqueImages.length ? uniqueImages : [article.featuredImageUrl])
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
 export default async function Home() {
   const [articles, popularVideos] = await Promise.all([
     getPublishedArticles(),
@@ -24,6 +39,7 @@ export default async function Home() {
   const latestArticle = articles[0] || null;
   const latestFourArticles = articles.slice(1, 5);
   const featuredVideos = popularVideos.slice(0, 5);
+  const latestArticleImages = latestArticle ? getArticleBodyImages(latestArticle) : [];
 
   return (
     <main className="home-page">
@@ -45,8 +61,13 @@ export default async function Home() {
               className="home-hero-image"
               href={`/articles/${latestArticle.slug}`}
               aria-label={`Read ${latestArticle.title}`}
+              style={{
+                gridTemplateRows: `repeat(${Math.max(latestArticleImages.length, 1)}, minmax(0, 1fr))`,
+              }}
             >
-              <img src={latestArticle.featuredImageUrl} alt="" />
+              {latestArticleImages.map((imageUrl) => (
+                <img src={imageUrl} alt="" key={imageUrl} />
+              ))}
             </Link>
             <Link
               className="home-hero-copy"
