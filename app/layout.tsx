@@ -3,15 +3,15 @@ import Link from "next/link";
 import "./globals.css";
 
 const siteUrl = "https://runplayback.com";
+const siteDescription = "Real EV reviews. Smarter purchases.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "RunPlayBack - EV Lifestyle Tech Tips",
+    default: "RunPlayBack - Real EV Reviews",
     template: "%s | RunPlayBack",
   },
-  description:
-    "RunPlayBack shares EV lifestyle tech tips, electric bike and scooter reviews, mini bike videos, battery advice, accessories, and real-world riding experience.",
+  description: siteDescription,
   keywords: [
     "RunPlayBack",
     "EV lifestyle",
@@ -32,16 +32,14 @@ export const metadata: Metadata = {
     type: "website",
     url: siteUrl,
     siteName: "RunPlayBack",
-    title: "RunPlayBack - EV Lifestyle Tech Tips",
-    description:
-      "EV lifestyle tech tips, electric bike and scooter reviews, mini bike videos, battery advice, accessories, and real-world riding experience.",
+    title: "RunPlayBack - Real EV Reviews",
+    description: siteDescription,
   },
   twitter: {
     card: "summary_large_image",
     creator: "@runplayback",
-    title: "RunPlayBack - EV Lifestyle Tech Tips",
-    description:
-      "EV lifestyle tech tips, electric bike and scooter reviews, mini bike videos, battery advice, accessories, and real-world riding experience.",
+    title: "RunPlayBack - Real EV Reviews",
+    description: siteDescription,
   },
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
@@ -128,7 +126,7 @@ export default function RootLayout({
         "@id": `${siteUrl}/#website`,
         url: siteUrl,
         name: "RunPlayBack",
-        description: "EV Lifestyle Tech Tips",
+        description: siteDescription,
         publisher: {
           "@id": `${siteUrl}/#organization`,
         },

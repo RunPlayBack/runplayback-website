@@ -9,8 +9,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "RunPlayBack",
-  description:
-    "RunPlayBack covers electric bikes, scooters, trikes, dirt bikes, batteries, accessories, and real-world EV lifestyle reviews.",
+  description: "Real EV reviews. Smarter purchases.",
   alternates: {
     canonical: "/",
   },
