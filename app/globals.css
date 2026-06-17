@@ -995,13 +995,15 @@ button {
   padding: 8px 16px;
   text-decoration: none;
   transition:
+    background 160ms ease,
     border-color 160ms ease,
     color 160ms ease;
 }
 
 .reviews-topic-links a:hover {
-  border-color: var(--orange);
-  color: var(--orange);
+  background: #f47a26;
+  border-color: #f47a26;
+  color: #111111;
 }
 
 .featured-article {
