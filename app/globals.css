@@ -803,11 +803,21 @@ button {
   padding-top: 16px;
 }
 
+.search-result > a {
+  display: block;
+  overflow: hidden;
+}
+
 .search-result img {
   aspect-ratio: 16 / 9;
   display: block;
   object-fit: cover;
+  transition: transform 180ms ease;
   width: 100%;
+}
+
+.search-result > a:hover img {
+  transform: scale(1.03);
 }
 
 .search-result h2 {
@@ -1075,12 +1085,22 @@ button {
   padding-top: 0;
 }
 
+.article-card > a:first-child {
+  display: block;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
 .article-card img {
   aspect-ratio: 16 / 9;
   display: block;
-  margin-bottom: 14px;
   object-fit: cover;
+  transition: transform 180ms ease;
   width: 100%;
+}
+
+.article-card > a:first-child:hover img {
+  transform: scale(1.03);
 }
 
 .article-card h3 {
@@ -1108,7 +1128,12 @@ button {
   display: none;
 }
 
-.reviews-page .article-card .tag-list {
+.reviews-page .article-card .tag-list,
+.category-page .article-card .tag-list {
+  display: none;
+}
+
+.category-page .article-card > p:not(.article-date) {
   display: none;
 }
 
