@@ -76,6 +76,7 @@ export default async function Home() {
             >
               <p>Latest Review</p>
               <h1>{latestArticle.title}</h1>
+              <span>Written by {latestArticle.authorName}</span>
               {latestArticle.displayPublishedAt ? (
                 <span>{formatArticleDate(latestArticle.displayPublishedAt)}</span>
               ) : null}
