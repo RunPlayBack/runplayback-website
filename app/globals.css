@@ -896,27 +896,38 @@ button {
 }
 
 .category-nav {
-  border-bottom: 2px solid var(--line);
-  border-top: 2px solid var(--line);
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px 18px;
   margin: 28px 0;
-  padding: 14px 0;
 }
 
-.category-nav a,
+.category-nav a {
+  color: var(--ink);
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: color 160ms ease;
+}
+
+.category-nav a:hover,
+.category-nav a[aria-current="page"] {
+  color: var(--orange);
+}
+
 .category-link {
   color: var(--ink);
   display: inline-flex;
   font-size: 0.82rem;
   font-weight: 800;
-  text-decoration: underline;
+  text-decoration: none;
   text-transform: uppercase;
-  text-underline-offset: 3px;
+  transition: color 160ms ease;
 }
 
-.category-nav a[aria-current="page"] {
+.category-link:hover {
   color: var(--orange);
 }
 
@@ -944,19 +955,91 @@ button {
   max-width: 760px;
 }
 
+.reviews-topic-section {
+  align-items: start;
+  display: grid;
+  gap: 28px;
+  grid-template-columns: 190px 1fr;
+  margin: 28px 0 34px;
+}
+
+.reviews-topic-section p {
+  font-size: 0.86rem;
+  font-weight: 800;
+  margin: 0 0 4px;
+}
+
+.reviews-topic-section h2 {
+  font-size: clamp(1.65rem, 3vw, 2.25rem);
+  line-height: 0.96;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.reviews-topic-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.reviews-topic-links a {
+  align-items: center;
+  border: 2px solid #f47a26;
+  border-radius: 8px;
+  color: var(--ink);
+  display: inline-flex;
+  font-size: 0.86rem;
+  font-weight: 800;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 16px;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.reviews-topic-links a:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
 .featured-article {
-  border-bottom: 2px solid var(--line);
-  border-top: 3px solid var(--ink);
+  display: grid;
+  gap: 1px;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.8fr);
   margin-bottom: 28px;
-  padding: 18px 0 28px;
+  overflow: hidden;
 }
 
 .featured-article img {
-  aspect-ratio: 16 / 9;
   display: block;
-  margin: 0 0 18px;
+  height: 100%;
+  min-height: 360px;
   object-fit: cover;
   width: 100%;
+}
+
+.featured-article-image {
+  background: #000000;
+  display: block;
+  overflow: hidden;
+}
+
+.featured-article-copy {
+  background: #f47a26;
+  border-radius: 0 14px 14px 0;
+  color: #111111;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(26px, 4vw, 44px);
+  text-decoration: none;
+  transition: background 180ms ease;
+}
+
+.featured-article-copy:hover {
+  background: #fff45b;
 }
 
 .featured-article h1 {
@@ -966,19 +1049,18 @@ button {
 }
 
 .featured-article p {
-  color: var(--muted);
+  color: #111111;
   margin: 0;
 }
 
 .featured-article .eyebrow {
-  color: var(--orange);
+  color: #111111;
+  font-weight: 800;
   margin-bottom: 14px;
 }
 
 .article-list-header {
   align-items: center;
-  border-bottom: 2px solid var(--line);
-  border-top: 2px solid var(--line);
   color: var(--muted);
   display: flex;
   font-size: 0.86rem;
@@ -994,8 +1076,7 @@ button {
 }
 
 .article-card {
-  border-top: 3px solid var(--ink);
-  padding-top: 16px;
+  padding-top: 0;
 }
 
 .article-card img {
@@ -1010,6 +1091,16 @@ button {
   font-size: 1.05rem;
   line-height: 1.25;
   margin: 0 0 8px;
+}
+
+.article-card h3 a {
+  color: var(--ink);
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.article-card h3 a:hover {
+  color: var(--orange);
 }
 
 .article-card p {
@@ -1057,7 +1148,6 @@ button {
 
 .article-pagination {
   align-items: center;
-  border-top: 2px solid var(--line);
   display: grid;
   gap: 14px;
   grid-template-columns: 1fr auto 1fr;
@@ -1700,7 +1790,9 @@ button {
   }
 
   .home-feature-grid,
-  .home-topic-section {
+  .home-topic-section,
+  .reviews-topic-section,
+  .featured-article {
     grid-template-columns: 1fr;
   }
 
@@ -1710,6 +1802,14 @@ button {
 
   .home-hero-copy {
     border-radius: 14px;
+  }
+
+  .featured-article-copy {
+    border-radius: 14px;
+  }
+
+  .featured-article img {
+    min-height: 0;
   }
 
   .home-hero-image,

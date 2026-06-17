@@ -96,35 +96,44 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
         <div className="page-kicker">
           <span>Reviews</span>
         </div>
-        <nav className="category-nav" aria-label="Review categories">
-          {articleCategories.map((category) => (
-            <Link href={`/articles/categories/${category.slug}`} key={category.slug}>
-              {category.label}
-            </Link>
-          ))}
-        </nav>
+        <section className="reviews-topic-section" aria-label="Review categories">
+          <div>
+            <p>Explore by</p>
+            <h2>Popular Topics</h2>
+          </div>
+          <nav className="reviews-topic-links">
+            {articleCategories.map((category) => (
+              <Link href={`/articles/categories/${category.slug}`} key={category.slug}>
+                {category.label}
+                <span aria-hidden="true">→</span>
+              </Link>
+            ))}
+          </nav>
+        </section>
         {featuredArticle && currentPage === 1 ? (
           <article className="featured-article">
-            <p className="eyebrow">Latest Review</p>
             {featuredArticle.featuredImageUrl ? (
               <Link
+                className="featured-article-image"
                 aria-label={`Read ${featuredArticle.title}`}
                 href={`/articles/${featuredArticle.slug}`}
               >
                 <img src={featuredArticle.featuredImageUrl} alt="" />
               </Link>
             ) : null}
-            <h1>
-              <Link href={`/articles/${featuredArticle.slug}`}>
-                {featuredArticle.title}
-              </Link>
-            </h1>
-            {featuredArticle.displayPublishedAt ? (
-              <p className="article-date">
-                {formatArticleDate(featuredArticle.displayPublishedAt)}
-              </p>
-            ) : null}
-            <p>{featuredArticle.seoDescription}</p>
+            <Link
+              className="featured-article-copy"
+              href={`/articles/${featuredArticle.slug}`}
+            >
+              <p className="eyebrow">Latest Review</p>
+              <h1>{featuredArticle.title}</h1>
+              {featuredArticle.displayPublishedAt ? (
+                <p className="article-date">
+                  {formatArticleDate(featuredArticle.displayPublishedAt)}
+                </p>
+              ) : null}
+              <p>{featuredArticle.seoDescription}</p>
+            </Link>
           </article>
         ) : null}
         {listArticles.length ? (
