@@ -85,8 +85,8 @@ export function HomeMetricsFooter({ metrics }: HomeMetricsFooterProps) {
       <div className="home-metrics-copy">
         <p>RunPlayBack by the numbers</p>
         <h2>
-          RunPlayBack helps riders make smarter EV buying decisions through
-          honest reviews, real-world testing, and years of hands-on experience.
+          RunPlayBack helps EV riders through honest reviews, real-world
+          testing, and years of hands-on experience.
         </h2>
       </div>
       <div className="home-metrics-panel">

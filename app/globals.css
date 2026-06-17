@@ -394,14 +394,14 @@ button {
 .home-metrics-footer {
   display: grid;
   grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-  margin-top: 58px;
+  margin-top: 42px;
   overflow: hidden;
 }
 
 .home-metrics-copy {
   background: #f47a26;
   color: #111111;
-  padding: clamp(36px, 6vw, 72px);
+  padding: clamp(28px, 4vw, 48px);
 }
 
 .home-metrics-copy p {
@@ -412,19 +412,19 @@ button {
 }
 
 .home-metrics-copy h2 {
-  font-size: clamp(1.8rem, 3.2vw, 3.3rem);
-  line-height: 1.04;
+  font-size: clamp(1.45rem, 2.45vw, 2.45rem);
+  line-height: 1.08;
   margin: 0;
-  max-width: 720px;
+  max-width: 620px;
 }
 
 .home-metrics-panel {
   background: #111116;
   color: #ffffff;
   display: grid;
-  gap: 34px;
-  min-height: 360px;
-  padding: clamp(36px, 6vw, 72px);
+  gap: 24px;
+  min-height: 260px;
+  padding: clamp(28px, 4vw, 48px);
 }
 
 .home-metrics-active {
@@ -433,7 +433,7 @@ button {
 
 .home-metrics-active strong {
   display: block;
-  font-size: clamp(3rem, 8vw, 6.2rem);
+  font-size: clamp(2.5rem, 5.8vw, 4.8rem);
   font-weight: 900;
   letter-spacing: -0.04em;
   line-height: 0.86;
