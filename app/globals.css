@@ -220,16 +220,17 @@ button {
 
 .home-popular-links a {
   border-bottom: 1px dotted rgba(255, 255, 255, 0.34);
+  color: #ffffff;
   font-size: 0.92rem;
   font-weight: 800;
   line-height: 1.2;
   padding: 16px 0;
   text-decoration: none;
+  transition: color 160ms ease;
 }
 
 .home-popular-links a:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  color: var(--orange);
 }
 
 .home-hero-image {
