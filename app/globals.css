@@ -325,6 +325,21 @@ button {
   padding-right: 12px;
 }
 
+.home-latest-row .article-card .category-link,
+.home-latest-row .article-card > p:not(.article-date) {
+  display: none;
+}
+
+.home-latest-row .article-card h3 a {
+  color: var(--ink);
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.home-latest-row .article-card h3 a:hover {
+  color: var(--orange);
+}
+
 .home-latest-row .tag-list {
   display: none;
 }
