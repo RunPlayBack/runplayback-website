@@ -1282,7 +1282,9 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
         ) : null}
         <div className="copy article-content">
           <h1>{article.title}</h1>
-          <p className="article-author">Written by {article.authorName}</p>
+          <p className="article-author">
+            Written by <strong>{article.authorName}</strong>
+          </p>
           {article.displayPublishedAt ? (
             <p className="article-date">
               {formatArticleDate(article.displayPublishedAt)}

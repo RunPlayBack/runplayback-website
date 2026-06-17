@@ -282,10 +282,23 @@ button {
   margin: 10px 0 18px;
 }
 
-.home-hero-copy span {
+.home-hero-author,
+.home-hero-date {
   font-size: 0.84rem;
-  font-weight: 800;
   margin-bottom: 14px;
+}
+
+.home-hero-author {
+  font-weight: 400;
+  text-transform: none;
+}
+
+.home-hero-author strong {
+  font-weight: 800;
+}
+
+.home-hero-date {
+  font-weight: 800;
   text-transform: uppercase;
 }
 
@@ -1018,6 +1031,10 @@ button {
   font-weight: 400;
   line-height: 1.68;
   margin: -8px 0 0;
+}
+
+.article-author strong {
+  font-weight: 800;
 }
 
 .article-content .article-date {
