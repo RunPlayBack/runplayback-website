@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArticleCard, formatArticleDate } from "@/components/ArticleCard";
+import { HomeMetricsFooter } from "@/components/HomeMetricsFooter";
 import { articleCategories } from "@/lib/article-categories";
 import { getPublishedArticles, type PublicArticle } from "@/lib/articles";
 import { getPopularVideos } from "@/lib/popular-videos";
+import { fetchRunPlayBackChannelStats } from "@/lib/youtube/channel-stats";
 
 export const dynamic = "force-dynamic";
 
@@ -33,9 +35,10 @@ function getArticleVideoStillImages(article: PublicArticle) {
 }
 
 export default async function Home() {
-  const [articles, popularVideos] = await Promise.all([
+  const [articles, popularVideos, channelStats] = await Promise.all([
     getPublishedArticles(),
     getPopularVideos(),
+    fetchRunPlayBackChannelStats(),
   ]);
   const latestArticle = articles[0] || null;
   const latestFourArticles = articles.slice(1, 5);
@@ -117,6 +120,22 @@ export default async function Home() {
           ))}
         </div>
       </section>
+      <HomeMetricsFooter
+        metrics={[
+          {
+            label: "Subscribers",
+            value: channelStats.subscriberCount || 61_000,
+          },
+          {
+            label: "Views",
+            value: channelStats.viewCount || 10_200_000,
+          },
+          {
+            label: "Reviews",
+            value: articles.length,
+          },
+        ]}
+      />
     </main>
   );
 }

@@ -391,6 +391,106 @@ button {
   color: #111111;
 }
 
+.home-metrics-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  margin-top: 58px;
+  overflow: hidden;
+}
+
+.home-metrics-copy {
+  background: #f47a26;
+  color: #111111;
+  padding: clamp(36px, 6vw, 72px);
+}
+
+.home-metrics-copy p {
+  font-size: 0.9rem;
+  font-weight: 800;
+  margin: 0 0 14px;
+  text-transform: uppercase;
+}
+
+.home-metrics-copy h2 {
+  font-size: clamp(2rem, 4vw, 4rem);
+  line-height: 0.98;
+  margin: 0;
+  max-width: 560px;
+}
+
+.home-metrics-panel {
+  background: #111116;
+  color: #ffffff;
+  display: grid;
+  gap: 34px;
+  min-height: 360px;
+  padding: clamp(36px, 6vw, 72px);
+}
+
+.home-metrics-active {
+  align-self: end;
+}
+
+.home-metrics-active strong {
+  display: block;
+  font-size: clamp(3rem, 8vw, 6.2rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 0.86;
+}
+
+.home-metrics-active span {
+  color: #fff45b;
+  display: block;
+  font-size: clamp(1.05rem, 2vw, 1.55rem);
+  font-weight: 900;
+  margin-top: 14px;
+  text-transform: uppercase;
+}
+
+.home-metrics-list {
+  align-items: end;
+  display: grid;
+  gap: 1px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.home-metrics-list button {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  min-height: 96px;
+  padding: 16px 12px;
+  text-align: left;
+  transition:
+    background 180ms ease,
+    color 180ms ease;
+}
+
+.home-metrics-list button:hover,
+.home-metrics-list button.active {
+  background: #fff45b;
+  color: #111111;
+}
+
+.home-metrics-list span,
+.home-metrics-list small {
+  display: block;
+}
+
+.home-metrics-list span {
+  font-size: clamp(1.3rem, 2.6vw, 2.1rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.home-metrics-list small {
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin-top: 8px;
+  text-transform: uppercase;
+}
+
 .page-kicker {
   align-items: center;
   color: var(--orange);
@@ -1818,6 +1918,7 @@ button {
   }
 
   .home-feature-grid,
+  .home-metrics-footer,
   .home-topic-section,
   .reviews-topic-section,
   .featured-article {
@@ -1852,6 +1953,10 @@ button {
   .home-hero-image img {
     flex: none;
     height: auto;
+  }
+
+  .home-metrics-panel {
+    min-height: 0;
   }
 
   .home-latest-row {
@@ -1924,6 +2029,7 @@ button {
   }
 
   .home-latest-row,
+  .home-metrics-list,
   .video-grid,
   .search-result,
   .name-grid {

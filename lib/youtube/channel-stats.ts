@@ -17,8 +17,8 @@ type YouTubeChannelStatsResponse = {
 };
 
 const fallbackStats: YouTubeChannelStats = {
-  subscriberCount: 60000,
-  viewCount: 8000000,
+  subscriberCount: 61000,
+  viewCount: 10200000,
 };
 
 function parseCount(value: string | undefined) {
