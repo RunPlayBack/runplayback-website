@@ -215,9 +215,6 @@ export default function RootLayout({
               <SocialIcon platform="x" />
             </a>
           </div>
-          <Link className="admin-link" href="/admin/login">
-            Admin
-          </Link>
         </footer>
       </body>
     </html>
