@@ -84,7 +84,10 @@ export function HomeMetricsFooter({ metrics }: HomeMetricsFooterProps) {
     <section className="home-metrics-footer" aria-label="RunPlayBack metrics">
       <div className="home-metrics-copy">
         <p>RunPlayBack by the numbers</p>
-        <h2>Real EV reviews backed by real audience momentum.</h2>
+        <h2>
+          RunPlayBack helps riders make smarter EV buying decisions through
+          honest reviews, real-world testing, and years of hands-on experience.
+        </h2>
       </div>
       <div className="home-metrics-panel">
         <div className="home-metrics-active" aria-live="polite">
