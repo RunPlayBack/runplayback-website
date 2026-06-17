@@ -92,7 +92,7 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
 
   return (
     <main className="page">
-      <div className="legacy-page">
+      <div className="legacy-page reviews-page">
         <div className="page-kicker">
           <span>Reviews</span>
         </div>
@@ -112,27 +112,24 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
         </section>
         {featuredArticle && currentPage === 1 ? (
           <article className="featured-article">
-            {featuredArticle.featuredImageUrl ? (
-              <Link
-                className="featured-article-image"
-                aria-label={`Read ${featuredArticle.title}`}
-                href={`/articles/${featuredArticle.slug}`}
-              >
-                <img src={featuredArticle.featuredImageUrl} alt="" />
-              </Link>
-            ) : null}
             <Link
-              className="featured-article-copy"
+              className="featured-article-card"
               href={`/articles/${featuredArticle.slug}`}
+              aria-label={`Read ${featuredArticle.title}`}
             >
-              <p className="eyebrow">Latest Review</p>
-              <h1>{featuredArticle.title}</h1>
-              {featuredArticle.displayPublishedAt ? (
-                <p className="article-date">
-                  {formatArticleDate(featuredArticle.displayPublishedAt)}
-                </p>
+              {featuredArticle.featuredImageUrl ? (
+                <img src={featuredArticle.featuredImageUrl} alt="" />
               ) : null}
-              <p>{featuredArticle.seoDescription}</p>
+              <div className="featured-article-copy">
+                <p className="eyebrow">Latest Review</p>
+                <h1>{featuredArticle.title}</h1>
+                {featuredArticle.displayPublishedAt ? (
+                  <p className="article-date">
+                    {formatArticleDate(featuredArticle.displayPublishedAt)}
+                  </p>
+                ) : null}
+                <p>{featuredArticle.seoDescription}</p>
+              </div>
             </Link>
           </article>
         ) : null}
