@@ -44,15 +44,6 @@ export function HomeMetricsFooter({ metrics }: HomeMetricsFooterProps) {
       return;
     }
 
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-
-    if (prefersReducedMotion) {
-      setDisplayValue(activeMetric.value);
-      return;
-    }
-
     const duration = 900;
     const startedAt = performance.now();
     let animationFrame = 0;
@@ -83,7 +74,7 @@ export function HomeMetricsFooter({ metrics }: HomeMetricsFooterProps) {
   return (
     <section className="home-metrics-footer" aria-label="RunPlayBack metrics">
       <div className="home-metrics-copy">
-        <p>RunPlayBack by the numbers</p>
+        <p>By the numbers</p>
         <h2>
           RunPlayBack helps EV riders through honest reviews, real-world
           testing, and years of hands-on experience.
