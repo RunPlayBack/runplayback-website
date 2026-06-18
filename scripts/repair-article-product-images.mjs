@@ -545,21 +545,36 @@ function hasRealInlineProductImage(article, video) {
 
   return images.some(
     (image) =>
+      !isVideoStillImage(image.url, image.alt) &&
       !shouldUseFallbackInlineImage(image.url, image.alt) &&
       !isDuplicateThumbnailImage(image.url, context),
   );
 }
 
-function removeMarkdownImages(content) {
+function isVideoStillImage(url, alt = "") {
+  return alt.toLowerCase().startsWith("video still") || url.includes("/article-stills/");
+}
+
+function removeProductMarkdownImages(content) {
   return content
     .split("\n")
-    .filter((line) => !/^!\[[^\]]*\]\(https?:\/\/[^)]+\)$/.test(line.trim()))
+    .filter((line) => {
+      const match = line
+        .trim()
+        .match(/^!\[([^\]]*)\]\((https?:\/\/[^)]+)\)$/);
+
+      if (!match) {
+        return true;
+      }
+
+      return isVideoStillImage(match[2], match[1]);
+    })
     .join("\n")
     .replace(/\n{3,}/g, "\n\n");
 }
 
 function insertImageAfterFirstParagraph(content, image) {
-  const lines = removeMarkdownImages(content).split("\n");
+  const lines = removeProductMarkdownImages(content).split("\n");
   let firstParagraphIndex = -1;
   let activeHeading = "";
 

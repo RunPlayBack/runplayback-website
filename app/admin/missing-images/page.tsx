@@ -63,6 +63,10 @@ function extractMarkdownImages(content: string) {
   );
 }
 
+function isVideoStillImage(url: string, alt = "") {
+  return alt.toLowerCase().startsWith("video still") || url.includes("/article-stills/");
+}
+
 const knownLowQualityInlineImageUrls = new Set([
   "https://www.qronge.com/cdn/shop/files/3x_25.png?v=1775123287",
   "https://cdn.shopify.com/s/files/1/0583/5810/4213/files/Rectangle_9.jpg?v=1771140830",
@@ -123,6 +127,7 @@ function hasRealProductImage(article: ArticleRow) {
 
   return extractMarkdownImages(article.content).some(
     (image) =>
+      !isVideoStillImage(image.url, image.alt) &&
       !shouldUseFallbackInlineImage(image.url, image.alt) &&
       !isDuplicateThumbnailImage(image.url, {
         featuredImageUrl,

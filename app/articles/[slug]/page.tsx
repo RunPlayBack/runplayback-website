@@ -736,6 +736,10 @@ function isCurrentVideoLinkLine(line: string, youtubeVideoId = "") {
   );
 }
 
+function isBrokenMarkdownImageStart(line: string) {
+  return /^!\[[^\]]*(?:\]|\]\(.*)?$/i.test(line);
+}
+
 function buildArticleBlocks(
   content: string,
   fallbackImageUrl = "",
@@ -747,6 +751,7 @@ function buildArticleBlocks(
   let shouldSkipSection = false;
   let shouldSkipRemainingLinks = false;
   let shouldSkipNextYouTubeUrl = false;
+  let shouldSkipBrokenImageRemainder = false;
   let inlineProductImageCount = 0;
   const lines = content.split("\n");
 
@@ -754,6 +759,14 @@ function buildArticleBlocks(
     const trimmed = line.trim();
 
     if (!trimmed) {
+      return;
+    }
+
+    if (shouldSkipBrokenImageRemainder) {
+      if (trimmed.endsWith(")")) {
+        shouldSkipBrokenImageRemainder = false;
+      }
+
       return;
     }
 
@@ -790,6 +803,11 @@ function buildArticleBlocks(
         !shouldDemoteMarkdownHeading(trimmed)) ||
       (!isGeneratedLinksLine && isImplicitHeading(trimmed));
     const heading = stripMarkdownHeading(trimmed);
+
+    if (isBrokenMarkdownImageStart(trimmed) && !imageMatch) {
+      shouldSkipBrokenImageRemainder = !trimmed.endsWith(")");
+      return;
+    }
 
     if (isHeading) {
       activeHeading = normalizeHeading(trimmed);

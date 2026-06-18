@@ -70,6 +70,34 @@ function revalidateCategoryPages() {
   }
 }
 
+function cleanBrokenMarkdownImageFragments(content: string) {
+  const output: string[] = [];
+  let skippingImageFragment = false;
+
+  for (const line of content.split("\n")) {
+    const trimmed = line.trim();
+    const isFullMarkdownImage = /^!\[[^\]]*\]\(https?:\/\/[^)]+\)$/.test(trimmed);
+    const isBrokenMarkdownImageStart = /^!\[[^\]]*(?:\]|\]\(.*)?$/i.test(trimmed);
+
+    if (skippingImageFragment) {
+      if (trimmed.endsWith(")")) {
+        skippingImageFragment = false;
+      }
+
+      continue;
+    }
+
+    if (isBrokenMarkdownImageStart && !isFullMarkdownImage) {
+      skippingImageFragment = !trimmed.endsWith(")");
+      continue;
+    }
+
+    output.push(line);
+  }
+
+  return output.join("\n").replace(/\n{3,}/g, "\n\n");
+}
+
 export async function createDraftArticle() {
   const supabase = await createClient();
 
@@ -128,7 +156,9 @@ export async function saveArticle(articleId: string, formData: FormData) {
       featured_image_url: getString(formData, "featured_image_url"),
       author_name: getString(formData, "author_name") || "RunPlayBack",
       category_slug: categorySlug,
-      content: String(formData.get("content") || ""),
+      content: cleanBrokenMarkdownImageFragments(
+        String(formData.get("content") || ""),
+      ),
       updated_at: new Date().toISOString(),
     })
     .eq("id", articleId);

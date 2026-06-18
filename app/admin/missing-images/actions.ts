@@ -27,16 +27,30 @@ function redirectWithError(error: unknown, returnPath = "/admin/missing-images")
   redirect(addStatusToPath(returnPath, "error", message));
 }
 
-function removeMarkdownImages(content: string) {
+function isVideoStillMarkdownImage(alt: string, url: string) {
+  return alt.toLowerCase().startsWith("video still") || url.includes("/article-stills/");
+}
+
+function removeProductMarkdownImages(content: string) {
   return content
     .split("\n")
-    .filter((line) => !/^!\[[^\]]*\]\(https?:\/\/[^)]+\)$/.test(line.trim()))
+    .filter((line) => {
+      const match = line
+        .trim()
+        .match(/^!\[([^\]]*)\]\((https?:\/\/[^)]+)\)$/);
+
+      if (!match) {
+        return true;
+      }
+
+      return isVideoStillMarkdownImage(match[1], match[2]);
+    })
     .join("\n")
     .replace(/\n{3,}/g, "\n\n");
 }
 
 function insertImageAfterFirstParagraph(content: string, imageUrl: string, title: string) {
-  const lines = removeMarkdownImages(content).split("\n");
+  const lines = removeProductMarkdownImages(content).split("\n");
   let firstParagraphIndex = -1;
   let activeHeading = "";
 
