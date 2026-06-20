@@ -136,6 +136,60 @@ The repair skips reviews that already have a real product image, removes duplica
 YouTube thumbnail images from the body, and inserts the best product image it can find
 from the saved official product links.
 
+## Update YouTube Descriptions
+
+The YouTube description updater adds the matching written review link and
+replaces the old `Email Me` website line with the cleaner Contact and Articles
+links. It only works on videos that already have a matching published review.
+
+Preview the next 10 matching videos without changing YouTube:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run youtube-descriptions:update -- --limit=10
+```
+
+Apply the next 10 after the preview looks right:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run youtube-descriptions:update -- --limit=10 --apply --sleep=3 --continue-on-error
+```
+
+Update one specific video:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run youtube-descriptions:update -- --video=https://youtu.be/PEQvHmDchZ4 --apply
+```
+
+Update every matching published review:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run youtube-descriptions:update -- --all --apply --sleep=3 --continue-on-error
+```
+
+Run a slower overnight update with a longer pause between batches:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run youtube-descriptions:update -- --all --apply --sleep=8 --batch-size=25 --batch-pause=300 --continue-on-error
+```
+
+Resume from a specific position after YouTube quota resets:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run youtube-descriptions:update -- --all --start=192 --apply --sleep=8 --batch-size=25 --batch-pause=300 --continue-on-error
+```
+
+The script preserves the existing YouTube title, tags, category, timestamps,
+affiliate links, social links, and the rest of the description text. It skips
+videos that already have the correct links. If YouTube reports that quota is
+exceeded, the script stops immediately so it does not keep making failed
+requests.
+
 ## Import Video Stills Into Reviews
 
 The video still importer divides each matched YouTube video into four sections,

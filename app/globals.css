@@ -1855,6 +1855,44 @@ button {
   padding: 10px 12px;
 }
 
+.description-updater-details {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.description-updater-details p {
+  display: grid;
+  gap: 4px;
+}
+
+.description-updater-details a,
+.description-updater-details span {
+  color: #5d6b62;
+  overflow-wrap: anywhere;
+}
+
+.description-updater-details a:hover {
+  color: var(--orange);
+}
+
+.description-preview-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.description-preview-grid textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  min-height: 520px;
+  white-space: pre-wrap;
+}
+
+.youtube-description-log-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
 .setup-note {
   background: #f7f9f2;
   border: 1px solid #dce4d7;
@@ -1978,6 +2016,7 @@ button {
   .missing-image-row,
   .missing-image-search,
   .popular-video-form-grid,
+  .description-preview-grid,
   .video-still-grid {
     grid-template-columns: 1fr;
   }
