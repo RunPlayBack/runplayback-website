@@ -51,7 +51,13 @@ function hasFlag(name) {
 }
 
 function getNumberArg(name, fallback) {
-  const value = Number(getArg(name, ""));
+  const rawValue = getArg(name, "");
+
+  if (!rawValue) {
+    return fallback;
+  }
+
+  const value = Number(rawValue);
 
   return Number.isFinite(value) && value >= 0 ? value : fallback;
 }
@@ -104,6 +110,27 @@ function getYouTubeVideoId(value) {
   } catch {
     return "";
   }
+}
+
+function getYouTubeVideoIdFromText(value) {
+  const text = String(value || "");
+  const urlMatch = text.match(
+    /(?:youtu\.be\/|youtube\.com\/watch\?v=|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+  );
+
+  if (urlMatch?.[1]) {
+    return urlMatch[1];
+  }
+
+  const trailingId = text.slice(-11);
+
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trailingId)) {
+    return trailingId;
+  }
+
+  const tokenMatch = text.match(/(?:^|[^a-zA-Z0-9_-])([a-zA-Z0-9_-]{11})(?:$|[^a-zA-Z0-9_-])/);
+
+  return tokenMatch?.[1] || "";
 }
 
 function normalizeLineEndings(value) {
@@ -415,7 +442,6 @@ async function fetchPublishedArticleCandidates(supabase) {
     .from("articles")
     .select("id,title,slug,status,published_at,video_id,videos(id,title,youtube_video_id)")
     .eq("status", "published")
-    .not("video_id", "is", null)
     .order("published_at", { ascending: false });
 
   if (error) {
@@ -425,13 +451,23 @@ async function fetchPublishedArticleCandidates(supabase) {
   return (data || [])
     .map((article) => {
       const video = Array.isArray(article.videos) ? article.videos[0] : article.videos;
+      const inferredYouTubeVideoId =
+        video?.youtube_video_id || getYouTubeVideoIdFromText(article.slug);
+
+      if (!inferredYouTubeVideoId) {
+        return null;
+      }
 
       return {
         ...article,
-        video,
+        video: {
+          id: video?.id || null,
+          title: video?.title || article.title,
+          youtube_video_id: inferredYouTubeVideoId,
+        },
       };
     })
-    .filter((article) => article.video?.youtube_video_id);
+    .filter(Boolean);
 }
 
 function previewLines(description, limit = 16) {
@@ -556,10 +592,12 @@ async function main() {
         youtubeVideoId: video.youtube_video_id,
       });
 
-      await supabase
-        .from("videos")
-        .update({ description: preview.proposedDescription })
-        .eq("id", video.id);
+      if (video.id) {
+        await supabase
+          .from("videos")
+          .update({ description: preview.proposedDescription })
+          .eq("id", video.id);
+      }
 
       await logUpdate(supabase, {
         article,
