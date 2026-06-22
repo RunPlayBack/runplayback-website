@@ -103,6 +103,7 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
       : null;
   const featuredArticleSourceImages =
     featuredArticleDetails &&
+    !featuredArticleDetails.featuredImageUrl &&
     isVersusArticle(featuredArticleDetails.title, featuredArticleDetails.articleType)
       ? featuredArticleDetails.sourceArticles
           .filter((sourceArticle) => sourceArticle.featuredImageUrl)

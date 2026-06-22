@@ -1340,25 +1340,25 @@ export async function generateMetadata({
   }
 
   const comparisonSourceImages =
-    isVersusArticle(article)
+    isVersusArticle(article) && !article.featuredImageUrl
       ? article.sourceArticles
           .filter((sourceArticle) => sourceArticle.featuredImageUrl)
           .slice(0, 2)
       : [];
   const metadataImages =
-    comparisonSourceImages.length >= 2
-      ? comparisonSourceImages.map((sourceArticle) => ({
-          url: sourceArticle.featuredImageUrl,
-          alt: sourceArticle.title,
-        }))
-      : article.featuredImageUrl
+    article.featuredImageUrl
         ? [
             {
               url: article.featuredImageUrl,
               alt: article.title,
             },
           ]
-        : undefined;
+        : comparisonSourceImages.length >= 2
+          ? comparisonSourceImages.map((sourceArticle) => ({
+              url: sourceArticle.featuredImageUrl,
+              alt: sourceArticle.title,
+            }))
+          : undefined;
 
   return {
     title: article.seoTitle,
@@ -1407,16 +1407,16 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
       ? [article.video]
       : [];
   const comparisonSourceImages =
-    isVersusArticle(article)
+    isVersusArticle(article) && !article.featuredImageUrl
       ? article.sourceArticles
           .filter((sourceArticle) => sourceArticle.featuredImageUrl)
           .slice(0, 2)
       : [];
-  const articleImageUrls = comparisonSourceImages.length >= 2
-    ? comparisonSourceImages.map((sourceArticle) => sourceArticle.featuredImageUrl)
-    : article.featuredImageUrl
+  const articleImageUrls = article.featuredImageUrl
       ? [article.featuredImageUrl]
-      : [];
+      : comparisonSourceImages.length >= 2
+        ? comparisonSourceImages.map((sourceArticle) => sourceArticle.featuredImageUrl)
+        : [];
   const shareLinks = [
     {
       href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleUrl)}`,
