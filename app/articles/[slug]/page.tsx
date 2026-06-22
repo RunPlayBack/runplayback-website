@@ -22,6 +22,7 @@ type ArticleBlock = {
   className?: string;
   href?: string;
   key: string;
+  sourceTitle?: string;
   src?: string;
   text: string;
   type: "heading" | "image" | "list" | "paragraph";
@@ -371,8 +372,41 @@ function normalizeHeading(line: string) {
   return stripMarkdownHeading(line).replaceAll("**", "").trim().toLowerCase();
 }
 
+function removeSourceReviewParentheticals(text: string) {
+  return text
+    .replace(
+      /\s*\(Full review:\s*\[[^\]]+]\([^)]+\)\s*;\s*video:\s*\[[^\]]+]\([^)]+\)\)/gi,
+      "",
+    )
+    .replace(
+      /\s*\(Full review:[^\n]*?;\s*video:[^\n]*?\)/gi,
+      "",
+    )
+    .replace(
+      /\s*\(Full review:\s*[^;()]+;\s*video:\s*https?:\/\/[^)]+\)/gi,
+      "",
+    )
+    .trim();
+}
+
+function isInlineReviewVideoReference(line: string) {
+  const strippedLine = stripMarkdownHeading(line)
+    .replace(/^[-*•]\s+/, "")
+    .replace(/\[[^\]]+]\([^)]+\)/g, (match) => {
+      const labelMatch = match.match(/^\[([^\]]+)]/);
+      return labelMatch?.[1] || match;
+    })
+    .trim();
+
+  return (
+    /\bfull review\b/i.test(strippedLine) &&
+    /(?:\bvideo\s*:|\byoutube\b|youtu\.be|youtube\.com)/i.test(strippedLine)
+  );
+}
+
 function shouldSkipArticleSection(heading: string) {
   return (
+    heading === "related reviews" ||
     heading === "video" ||
     heading === "chapters" ||
     heading.startsWith("video chapters")
@@ -756,7 +790,7 @@ function buildArticleBlocks(
   const lines = content.split("\n");
 
   lines.forEach((line, index) => {
-    const trimmed = line.trim();
+    const trimmed = removeSourceReviewParentheticals(line.trim());
 
     if (!trimmed) {
       return;
@@ -772,6 +806,7 @@ function buildArticleBlocks(
 
     if (
       isGeneratedThumbnailLine(trimmed) ||
+      isInlineReviewVideoReference(trimmed) ||
       isVideoChapterTimestampLine(trimmed) ||
       isCurrentVideoLinkLine(trimmed, youtubeVideoId) ||
       /^(watch|video)\s*:?\s+https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(
@@ -983,10 +1018,21 @@ function shouldSkipVideoStillHeading(heading: string) {
   );
 }
 
-function reflowVideoStillBlocks(blocks: ArticleBlock[]) {
+function reflowVideoStillBlocks(
+  blocks: ArticleBlock[],
+  maxVideoStills = targetVideoStillCount,
+) {
+  const seenStillUrls = new Set<string>();
   const videoStillBlocks = blocks.filter(
     (block) => block.type === "image" && isVideoStillImage(block.alt, block.src),
-  );
+  ).filter((block) => {
+    if (!block.src || seenStillUrls.has(block.src)) {
+      return false;
+    }
+
+    seenStillUrls.add(block.src);
+    return true;
+  });
 
   if (!videoStillBlocks.length) {
     return blocks;
@@ -1030,7 +1076,7 @@ function reflowVideoStillBlocks(blocks: ArticleBlock[]) {
 
   const stillsToPlace = videoStillBlocks.slice(
     0,
-    Math.min(videoStillBlocks.length, headingIndexes.length, targetVideoStillCount),
+    Math.min(videoStillBlocks.length, headingIndexes.length, maxVideoStills),
   );
   const insertions = new Map<number, ArticleBlock[]>();
 
@@ -1053,6 +1099,160 @@ function reflowVideoStillBlocks(blocks: ArticleBlock[]) {
   });
 }
 
+function getSearchTokens(value: string) {
+  const ignoredWords = new Set([
+    "a",
+    "and",
+    "bike",
+    "ebike",
+    "electric",
+    "fat",
+    "full",
+    "review",
+    "style",
+    "the",
+    "tire",
+    "with",
+  ]);
+
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .filter((token) => token.length > 2 && !ignoredWords.has(token));
+}
+
+function getProductMatchScore(heading: string, sourceTitle = "") {
+  if (!sourceTitle) {
+    return 0;
+  }
+
+  const normalizedHeading = heading.toLowerCase();
+
+  return getSearchTokens(sourceTitle).filter((token) =>
+    normalizedHeading.includes(token),
+  ).length;
+}
+
+function getIntentionalInsertionIndexes(
+  headingIndexes: number[],
+  scoredHeadingIndexes: number[],
+  stillCount: number,
+) {
+  const targetIndexes =
+    scoredHeadingIndexes.length >= Math.min(2, stillCount)
+      ? scoredHeadingIndexes
+      : headingIndexes;
+
+  if (!targetIndexes.length) {
+    return [];
+  }
+
+  return Array.from({ length: stillCount }, (_, index) => {
+    const targetPosition = Math.floor(
+      ((index + 1) * targetIndexes.length) / (stillCount + 1),
+    );
+
+    return targetIndexes[Math.min(targetIndexes.length - 1, targetPosition)];
+  });
+}
+
+function reflowVersusVideoStillBlocks(blocks: ArticleBlock[]) {
+  const baseBlocks = blocks.filter(
+    (block) => !(block.type === "image" && isVideoStillImage(block.alt, block.src)),
+  );
+  const stillsBySourceTitle = new Map<string, ArticleBlock[]>();
+  const seenStillUrls = new Set<string>();
+
+  blocks
+    .filter((block) => block.type === "image" && isVideoStillImage(block.alt, block.src))
+    .forEach((block) => {
+      if (!block.src || seenStillUrls.has(block.src)) {
+        return;
+      }
+
+      seenStillUrls.add(block.src);
+      const sourceTitle = block.sourceTitle || "Review stills";
+      const sourceStills = stillsBySourceTitle.get(sourceTitle) || [];
+
+      if (sourceStills.length < targetVideoStillCount) {
+        sourceStills.push(block);
+        stillsBySourceTitle.set(sourceTitle, sourceStills);
+      }
+    });
+
+  if (!stillsBySourceTitle.size) {
+    return baseBlocks;
+  }
+
+  const stopIndex = baseBlocks.findIndex(
+    (block) =>
+      block.type === "heading" &&
+      shouldStopVideoStillReflowAtHeading(normalizeHeading(block.text)),
+  );
+  const bodyEndIndex = stopIndex === -1 ? baseBlocks.length : stopIndex;
+  const headingIndexes: number[] = [];
+  let hasSeenBodyText = false;
+
+  baseBlocks.slice(0, bodyEndIndex).forEach((block, index) => {
+    if (block.type === "heading") {
+      const heading = normalizeHeading(block.text);
+
+      if (hasSeenBodyText && !shouldSkipVideoStillHeading(heading)) {
+        headingIndexes.push(index);
+      }
+
+      return;
+    }
+
+    if (
+      (block.type === "paragraph" || block.type === "list") &&
+      !block.className?.includes("article-compact-links") &&
+      block.text.trim().length > 80
+    ) {
+      hasSeenBodyText = true;
+    }
+  });
+
+  if (!headingIndexes.length) {
+    return baseBlocks;
+  }
+
+  const insertions = new Map<number, ArticleBlock[]>();
+
+  stillsBySourceTitle.forEach((sourceStills, sourceTitle) => {
+    const scoredHeadingIndexes = headingIndexes.filter((headingIndex) => {
+      const block = baseBlocks[headingIndex];
+
+      return getProductMatchScore(block?.text || "", sourceTitle) > 0;
+    });
+    const insertionIndexes = getIntentionalInsertionIndexes(
+      headingIndexes,
+      scoredHeadingIndexes,
+      sourceStills.length,
+    );
+
+    sourceStills.forEach((still, index) => {
+      const targetIndex = insertionIndexes[index];
+
+      if (targetIndex === undefined) {
+        return;
+      }
+
+      const existing = insertions.get(targetIndex) || [];
+
+      existing.push(still);
+      insertions.set(targetIndex, existing);
+    });
+  });
+
+  return baseBlocks.flatMap((block, index) => {
+    const insertedBlocks = insertions.get(index) || [];
+
+    return insertedBlocks.length ? [...insertedBlocks, block] : [block];
+  });
+}
+
 function formatArticleDate(value: string | null) {
   if (!value) {
     return "";
@@ -1065,6 +1265,70 @@ function formatArticleDate(value: string | null) {
   }).format(new Date(value));
 }
 
+function isVersusArticle(article: { articleType: string | null; title: string }) {
+  return article.articleType === "versus" || /\b(?:vs\.?|versus)\b/i.test(article.title);
+}
+
+function getVideoStillBlocksFromContent(
+  content: string,
+  keyPrefix: string,
+  sourceTitle = "",
+): ArticleBlock[] {
+  const stills: ArticleBlock[] = [];
+  const seenUrls = new Set<string>();
+  const imageMatches = content.matchAll(/!\[([^\]]*)]\((https?:\/\/[^)]+)\)/g);
+
+  for (const [index, match] of Array.from(imageMatches).entries()) {
+    const alt = match[1] || "Video still";
+    const src = match[2] || "";
+
+    if (!src || seenUrls.has(src) || !isVideoStillImage(alt, src)) {
+      continue;
+    }
+
+    seenUrls.add(src);
+    stills.push({
+      alt,
+      key: `${keyPrefix}-video-still-${index}`,
+      sourceTitle,
+      src,
+      text: alt,
+      type: "image",
+    });
+  }
+
+  return stills;
+}
+
+function getVersusSourceVideoStillBlocks(article: {
+  articleType: string | null;
+  sourceArticles: Array<{ content: string; id: string; title: string }>;
+  title: string;
+}) {
+  if (!isVersusArticle(article)) {
+    return [];
+  }
+
+  const seenUrls = new Set<string>();
+
+  return article.sourceArticles.flatMap((sourceArticle, sourceIndex) =>
+    getVideoStillBlocksFromContent(
+      sourceArticle.content,
+      `source-${sourceArticle.id || sourceIndex}`,
+      sourceArticle.title,
+    )
+      .filter((block) => {
+        if (!block.src || seenUrls.has(block.src)) {
+          return false;
+        }
+
+        seenUrls.add(block.src);
+        return true;
+      })
+      .slice(0, targetVideoStillCount),
+  );
+}
+
 export async function generateMetadata({
   params,
 }: ArticlePageProps): Promise<Metadata> {
@@ -1074,6 +1338,27 @@ export async function generateMetadata({
   if (!article) {
     return {};
   }
+
+  const comparisonSourceImages =
+    isVersusArticle(article)
+      ? article.sourceArticles
+          .filter((sourceArticle) => sourceArticle.featuredImageUrl)
+          .slice(0, 2)
+      : [];
+  const metadataImages =
+    comparisonSourceImages.length >= 2
+      ? comparisonSourceImages.map((sourceArticle) => ({
+          url: sourceArticle.featuredImageUrl,
+          alt: sourceArticle.title,
+        }))
+      : article.featuredImageUrl
+        ? [
+            {
+              url: article.featuredImageUrl,
+              alt: article.title,
+            },
+          ]
+        : undefined;
 
   return {
     title: article.seoTitle,
@@ -1089,20 +1374,13 @@ export async function generateMetadata({
       title: article.seoTitle,
       description: article.seoDescription,
       url: `/articles/${article.slug}`,
-      images: article.featuredImageUrl
-        ? [
-            {
-              url: article.featuredImageUrl,
-              alt: article.title,
-            },
-          ]
-        : undefined,
+      images: metadataImages,
     },
     twitter: {
       card: "summary_large_image",
       title: article.seoTitle,
       description: article.seoDescription,
-      images: article.featuredImageUrl ? [article.featuredImageUrl] : undefined,
+      images: metadataImages?.map((image) => image.url),
     },
   };
 }
@@ -1123,6 +1401,22 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
   const articleCategory = getArticleCategory(article);
   const articleUrl = `https://runplayback.com/articles/${article.slug}`;
   const plainArticleText = getPlainArticleText(article.content);
+  const articleVideos = article.videos.length
+    ? article.videos
+    : article.video
+      ? [article.video]
+      : [];
+  const comparisonSourceImages =
+    isVersusArticle(article)
+      ? article.sourceArticles
+          .filter((sourceArticle) => sourceArticle.featuredImageUrl)
+          .slice(0, 2)
+      : [];
+  const articleImageUrls = comparisonSourceImages.length >= 2
+    ? comparisonSourceImages.map((sourceArticle) => sourceArticle.featuredImageUrl)
+    : article.featuredImageUrl
+      ? [article.featuredImageUrl]
+      : [];
   const shareLinks = [
     {
       href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleUrl)}`,
@@ -1145,18 +1439,27 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
       platform: "email" as const,
     },
   ];
-  const articleBlocks = reflowVideoStillBlocks(
-    addFallbackArticleImage(
-      buildArticleBlocks(
-        article.content,
-        article.featuredImageUrl,
-        article.video?.youtubeVideoId,
-      ),
-      article.slug,
-      article.video?.youtubeVideoId,
-      article.title,
-    ),
+  const rawArticleBlocks = buildArticleBlocks(
+    article.content,
+    article.featuredImageUrl,
+    article.video?.youtubeVideoId,
   );
+  const isComparisonArticle = isVersusArticle(article);
+  const articleBlocksWithFallback = isVersusArticle(article)
+    ? rawArticleBlocks.filter((block) => block.type !== "image")
+    : addFallbackArticleImage(
+        rawArticleBlocks,
+        article.slug,
+        article.video?.youtubeVideoId,
+        article.title,
+      );
+  const versusSourceVideoStillBlocks = getVersusSourceVideoStillBlocks(article);
+  const articleBlocks = isComparisonArticle
+    ? reflowVersusVideoStillBlocks([
+        ...articleBlocksWithFallback,
+        ...versusSourceVideoStillBlocks,
+      ])
+    : reflowVideoStillBlocks(articleBlocksWithFallback, targetVideoStillCount);
   const firstBodyLinksBlockIndex = articleBlocks.findIndex(
     (block) => block.type === "heading" && normalizeHeading(block.text) === "links",
   );
@@ -1193,7 +1496,7 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
         datePublished: article.displayPublishedAt,
         dateModified: article.publishedAt || article.displayPublishedAt,
         description: article.seoDescription,
-        image: article.featuredImageUrl,
+        image: articleImageUrls.length ? articleImageUrls : undefined,
         keywords: getArticleKeywords(article),
         wordCount: plainArticleText ? plainArticleText.split(/\s+/).length : undefined,
         author: {
@@ -1206,11 +1509,11 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
         mainEntityOfPage: {
           "@id": `${articleUrl}#webpage`,
         },
-        ...(article.video
+        ...(articleVideos.length
           ? {
-              video: {
-                "@id": `${articleUrl}#video`,
-              },
+              video: articleVideos.map((video) => ({
+                "@id": `${articleUrl}#video-${video.youtubeVideoId}`,
+              })),
             }
           : {}),
       },
@@ -1226,10 +1529,10 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
         breadcrumb: {
           "@id": `${articleUrl}#breadcrumb`,
         },
-        primaryImageOfPage: article.featuredImageUrl
+        primaryImageOfPage: articleImageUrls[0]
           ? {
               "@type": "ImageObject",
-              url: article.featuredImageUrl,
+              url: articleImageUrls[0],
             }
           : undefined,
       },
@@ -1257,25 +1560,21 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
           },
         ],
       },
-      ...(article.video
-        ? [
-            {
-              "@type": "VideoObject",
-              "@id": `${articleUrl}#video`,
-              name: article.video.title,
-              description: article.seoDescription,
-              thumbnailUrl: [
-                `https://img.youtube.com/vi/${article.video.youtubeVideoId}/hqdefault.jpg`,
-              ],
-              embedUrl: `https://www.youtube.com/embed/${article.video.youtubeVideoId}`,
-              url: article.video.videoUrl,
-              uploadDate: article.video.publishedAt || article.displayPublishedAt,
-              publisher: {
-                "@id": "https://runplayback.com/#organization",
-              },
-            },
-          ]
-        : []),
+      ...articleVideos.map((video) => ({
+        "@type": "VideoObject",
+        "@id": `${articleUrl}#video-${video.youtubeVideoId}`,
+        name: video.title,
+        description: article.seoDescription,
+        thumbnailUrl: [
+          `https://img.youtube.com/vi/${video.youtubeVideoId}/hqdefault.jpg`,
+        ],
+        embedUrl: `https://www.youtube.com/embed/${video.youtubeVideoId}`,
+        url: video.videoUrl,
+        uploadDate: video.publishedAt || article.displayPublishedAt,
+        publisher: {
+          "@id": "https://runplayback.com/#organization",
+        },
+      })),
     ],
   };
 
@@ -1295,7 +1594,15 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
         >
           {articleCategory.label}
         </Link>
-        {article.featuredImageUrl ? (
+        {comparisonSourceImages.length >= 2 ? (
+          <div className="versus-hero-images" aria-label="Compared product images">
+            {comparisonSourceImages.map((sourceArticle) => (
+              <figure key={sourceArticle.id}>
+                <img src={sourceArticle.featuredImageUrl} alt="" />
+              </figure>
+            ))}
+          </div>
+        ) : article.featuredImageUrl ? (
           <img className="hero-image" src={article.featuredImageUrl} alt="" />
         ) : null}
         <div className="copy article-content">
@@ -1372,16 +1679,24 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
             );
           })}
         </div>
-        {article.video ? (
-          <section className="article-video-section" aria-label="Review video">
-            <h2 className="section-title">Watch The Video</h2>
-            <iframe
-              className="video-embed"
-              src={`https://www.youtube.com/embed/${article.video.youtubeVideoId}`}
-              title={`${article.title} video`}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />
+        {articleVideos.length ? (
+          <section className="article-video-section" aria-label="Review videos">
+            <h2 className="section-title">
+              {articleVideos.length > 1 ? "Watch The Videos" : "Watch The Video"}
+            </h2>
+            <div className="article-video-list">
+              {articleVideos.map((video) => (
+                <div className="article-video-item" key={video.youtubeVideoId}>
+                  <iframe
+                    className="video-embed"
+                    src={`https://www.youtube.com/embed/${video.youtubeVideoId}`}
+                    title={video.title || `${article.title} video`}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                </div>
+              ))}
+            </div>
           </section>
         ) : null}
         {firstBodyLinksBlockIndex === -1 ? relatedReviewsSection : null}

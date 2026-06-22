@@ -1,6 +1,21 @@
 import { articles as placeholderArticles } from "@/lib/placeholder-data";
 import { createClient } from "@/lib/supabase/server";
 
+export type PublicArticleVideo = {
+  publishedAt: string | null;
+  youtubeVideoId: string;
+  videoUrl: string;
+  title: string;
+};
+
+export type PublicArticleSource = {
+  content: string;
+  id: string;
+  title: string;
+  slug: string;
+  featuredImageUrl: string;
+};
+
 export type PublicArticle = {
   id: string;
   title: string;
@@ -11,15 +26,13 @@ export type PublicArticle = {
   authorName: string;
   categorySlug: string | null;
   content: string;
+  articleType: string | null;
   displayPublishedAt: string | null;
   status: "draft" | "published";
   publishedAt: string | null;
-  video: {
-    publishedAt: string | null;
-    youtubeVideoId: string;
-    videoUrl: string;
-    title: string;
-  } | null;
+  sourceArticles: PublicArticleSource[];
+  video: PublicArticleVideo | null;
+  videos: PublicArticleVideo[];
   links: Array<{
     id: string;
     label: string;
@@ -37,6 +50,7 @@ type SupabaseArticleRow = {
   author_name: string | null;
   category_slug: string | null;
   content: string;
+  article_type: string | null;
   status: "draft" | "published";
   published_at: string | null;
   videos:
@@ -60,6 +74,33 @@ type SupabaseArticleRow = {
   }>;
 };
 
+type ArticleSourceRow = {
+  sort_order: number;
+  source_article_id: string;
+};
+
+type SourceArticleVideoRow = {
+  content: string | null;
+  id: string;
+  title: string;
+  slug: string;
+  featured_image_url: string | null;
+  videos:
+    | {
+        published_at: string | null;
+        youtube_video_id: string;
+        video_url: string;
+        title: string;
+      }
+    | Array<{
+        published_at: string | null;
+        youtube_video_id: string;
+        video_url: string;
+        title: string;
+      }>
+    | null;
+};
+
 function getYouTubeVideoIdFromText(value: string) {
   const patterns = [
     /youtu\.be\/([A-Za-z0-9_-]{11})/,
@@ -81,9 +122,34 @@ function getYouTubeVideoIdFromText(value: string) {
 }
 
 function mapSupabaseArticle(row: SupabaseArticleRow): PublicArticle {
-  const video = Array.isArray(row.videos) ? row.videos[0] : row.videos;
+  const videoRows = Array.isArray(row.videos)
+    ? row.videos
+    : row.videos
+      ? [row.videos]
+      : [];
+  const video = videoRows[0] || null;
   const fallbackYouTubeVideoId =
     video?.youtube_video_id || getYouTubeVideoIdFromText(`${row.content}\n${row.slug}`);
+  const videos = videoRows
+    .map((videoRow) => ({
+      publishedAt: videoRow.published_at || null,
+      youtubeVideoId: videoRow.youtube_video_id,
+      videoUrl: videoRow.video_url || `https://youtu.be/${videoRow.youtube_video_id}`,
+      title: videoRow.title || row.title,
+    }))
+    .filter((videoRow) => videoRow.youtubeVideoId);
+
+  if (
+    fallbackYouTubeVideoId &&
+    !videos.some((videoRow) => videoRow.youtubeVideoId === fallbackYouTubeVideoId)
+  ) {
+    videos.push({
+      publishedAt: video?.published_at || null,
+      youtubeVideoId: fallbackYouTubeVideoId,
+      videoUrl: video?.video_url || `https://youtu.be/${fallbackYouTubeVideoId}`,
+      title: video?.title || row.title,
+    });
+  }
 
   return {
     id: row.id,
@@ -100,17 +166,13 @@ function mapSupabaseArticle(row: SupabaseArticleRow): PublicArticle {
     authorName: row.author_name || "RunPlayBack",
     categorySlug: row.category_slug || null,
     content: row.content,
+    articleType: row.article_type || null,
     displayPublishedAt: video?.published_at || row.published_at,
     status: row.status,
     publishedAt: row.published_at,
-    video: fallbackYouTubeVideoId
-      ? {
-          publishedAt: video?.published_at || null,
-          youtubeVideoId: fallbackYouTubeVideoId,
-          videoUrl: video?.video_url || `https://youtu.be/${fallbackYouTubeVideoId}`,
-          title: video?.title || row.title,
-        }
-      : null,
+    sourceArticles: [],
+    video: videos[0] || null,
+    videos,
     links: row.affiliate_links || [],
   };
 }
@@ -128,9 +190,11 @@ function mapPlaceholderArticles(): PublicArticle[] {
       authorName: "RunPlayBack",
       categorySlug: null,
       content: `${article.excerpt}\n\nThis is placeholder content until Supabase published articles are available.`,
+      articleType: null,
       displayPublishedAt: null,
       status: article.status,
       publishedAt: null,
+      sourceArticles: [],
       video: article.youtubeVideoId
         ? {
             publishedAt: null,
@@ -139,8 +203,91 @@ function mapPlaceholderArticles(): PublicArticle[] {
             title: article.title,
           }
         : null,
+      videos: article.youtubeVideoId
+        ? [
+            {
+              publishedAt: null,
+              youtubeVideoId: article.youtubeVideoId,
+              videoUrl: `https://youtu.be/${article.youtubeVideoId}`,
+              title: article.title,
+            },
+          ]
+        : [],
       links: [],
     }));
+}
+
+async function getSourceArticleDetails(
+  supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>,
+  articleId: string,
+) {
+  const { data: sourceRows, error: sourceError } = await supabase
+    .from("article_sources")
+    .select("source_article_id,sort_order")
+    .eq("article_id", articleId)
+    .order("sort_order", { ascending: true });
+
+  if (sourceError || !sourceRows?.length) {
+    return { sourceArticles: [], videos: [] };
+  }
+
+  const orderedSourceRows = sourceRows as unknown as ArticleSourceRow[];
+  const sourceIds = orderedSourceRows.map((row) => row.source_article_id);
+  const { data: sourceArticles, error: articleError } = await supabase
+    .from("articles")
+    .select("id,title,slug,featured_image_url,content,videos(published_at,youtube_video_id,video_url,title)")
+    .in("id", sourceIds);
+
+  if (articleError || !sourceArticles?.length) {
+    return { sourceArticles: [], videos: [] };
+  }
+
+  const articleById = new Map(
+    (sourceArticles as unknown as SourceArticleVideoRow[]).map((article) => [
+      article.id,
+      article,
+    ]),
+  );
+  const videos: PublicArticleVideo[] = [];
+  const orderedSourceArticles: PublicArticleSource[] = [];
+
+  for (const row of orderedSourceRows) {
+    const sourceArticle = articleById.get(row.source_article_id);
+
+    if (sourceArticle?.featured_image_url) {
+      orderedSourceArticles.push({
+        content: sourceArticle.content || "",
+        id: sourceArticle.id,
+        title: sourceArticle.title,
+        slug: sourceArticle.slug,
+        featuredImageUrl: sourceArticle.featured_image_url,
+      });
+    }
+
+    const videoRows = Array.isArray(sourceArticle?.videos)
+      ? sourceArticle.videos
+      : sourceArticle?.videos
+        ? [sourceArticle.videos]
+        : [];
+
+    for (const videoRow of videoRows) {
+      if (
+        !videoRow.youtube_video_id ||
+        videos.some((video) => video.youtubeVideoId === videoRow.youtube_video_id)
+      ) {
+        continue;
+      }
+
+      videos.push({
+        publishedAt: videoRow.published_at || null,
+        youtubeVideoId: videoRow.youtube_video_id,
+        videoUrl: videoRow.video_url || `https://youtu.be/${videoRow.youtube_video_id}`,
+        title: videoRow.title || sourceArticle?.title || "RunPlayBack review video",
+      });
+    }
+  }
+
+  return { sourceArticles: orderedSourceArticles, videos };
 }
 
 export async function getPublishedArticles() {
@@ -153,7 +300,7 @@ export async function getPublishedArticles() {
   const { data, error } = await supabase
     .from("articles")
     .select(
-      "id,title,slug,seo_title,seo_description,featured_image_url,author_name,category_slug,content,status,published_at,videos(published_at,youtube_video_id,video_url,title),affiliate_links(id,label,url)",
+      "id,title,slug,seo_title,seo_description,featured_image_url,author_name,category_slug,content,article_type,status,published_at,videos(published_at,youtube_video_id,video_url,title),affiliate_links(id,label,url)",
     )
     .eq("status", "published")
     .order("published_at", { ascending: false, nullsFirst: false });
@@ -178,7 +325,7 @@ export async function getPublishedArticleBySlug(slug: string) {
   const { data, error } = await supabase
     .from("articles")
     .select(
-      "id,title,slug,seo_title,seo_description,featured_image_url,author_name,category_slug,content,status,published_at,videos(published_at,youtube_video_id,video_url,title),affiliate_links(id,label,url)",
+      "id,title,slug,seo_title,seo_description,featured_image_url,author_name,category_slug,content,article_type,status,published_at,videos(published_at,youtube_video_id,video_url,title),affiliate_links(id,label,url)",
     )
     .eq("status", "published")
     .eq("slug", slug)
@@ -188,5 +335,25 @@ export async function getPublishedArticleBySlug(slug: string) {
     return null;
   }
 
-  return mapSupabaseArticle(data as unknown as SupabaseArticleRow);
+  const article = mapSupabaseArticle(data as unknown as SupabaseArticleRow);
+  const sourceDetails = await getSourceArticleDetails(supabase, article.id);
+
+  if (!sourceDetails.sourceArticles.length && !sourceDetails.videos.length) {
+    return article;
+  }
+
+  const videos = [...article.videos];
+
+  for (const sourceVideo of sourceDetails.videos) {
+    if (!videos.some((video) => video.youtubeVideoId === sourceVideo.youtubeVideoId)) {
+      videos.push(sourceVideo);
+    }
+  }
+
+  return {
+    ...article,
+    sourceArticles: sourceDetails.sourceArticles,
+    video: videos[0] || null,
+    videos,
+  };
 }

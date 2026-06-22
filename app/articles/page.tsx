@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArticleCard, formatArticleDate } from "@/components/ArticleCard";
 import { articleCategories } from "@/lib/article-categories";
-import { getPublishedArticles } from "@/lib/articles";
+import { getPublishedArticleBySlug, getPublishedArticles } from "@/lib/articles";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +71,25 @@ function getPaginationItems(currentPage: number, totalPages: number) {
   ];
 }
 
+function isVersusArticle(title: string, articleType: string | null) {
+  return articleType === "versus" || /\b(?:vs\.?|versus)\b/i.test(title);
+}
+
+function getSourceTitleRank(articleTitle: string, sourceTitle: string) {
+  const normalizedArticleTitle = articleTitle.toLowerCase();
+  const sourceWords = sourceTitle
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((word) => word.length > 2 && !["review", "full", "test", "bike", "ebike"].includes(word));
+
+  const indexes = sourceWords
+    .map((word) => normalizedArticleTitle.indexOf(word))
+    .filter((index) => index >= 0);
+
+  return indexes.length ? Math.min(...indexes) : Number.MAX_SAFE_INTEGER;
+}
+
 export default async function ArticlesPage({ searchParams }: ArticlesPageProps) {
   const resolvedSearchParams = await searchParams;
   const articles = await getPublishedArticles();
@@ -78,6 +97,22 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
   const listArticles = featuredArticle ? articles.slice(1) : articles;
   const totalPages = Math.max(1, Math.ceil(listArticles.length / articlesPerPage));
   const currentPage = getPageNumber(resolvedSearchParams?.page, totalPages);
+  const featuredArticleDetails =
+    featuredArticle && currentPage === 1
+      ? await getPublishedArticleBySlug(featuredArticle.slug)
+      : null;
+  const featuredArticleSourceImages =
+    featuredArticleDetails &&
+    isVersusArticle(featuredArticleDetails.title, featuredArticleDetails.articleType)
+      ? featuredArticleDetails.sourceArticles
+          .filter((sourceArticle) => sourceArticle.featuredImageUrl)
+          .sort(
+            (firstSource, secondSource) =>
+              getSourceTitleRank(featuredArticleDetails.title, firstSource.title) -
+              getSourceTitleRank(featuredArticleDetails.title, secondSource.title),
+          )
+          .slice(0, 2)
+      : [];
   const startIndex = (currentPage - 1) * articlesPerPage;
   const visibleArticles = listArticles.slice(
     startIndex,
@@ -117,7 +152,15 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
               href={`/articles/${featuredArticle.slug}`}
               aria-label={`Read ${featuredArticle.title}`}
             >
-              {featuredArticle.featuredImageUrl ? (
+              {featuredArticleSourceImages.length >= 2 ? (
+                <div className="featured-versus-images" aria-label="Compared product images">
+                  {featuredArticleSourceImages.map((sourceArticle) => (
+                    <figure key={sourceArticle.id}>
+                      <img src={sourceArticle.featuredImageUrl} alt="" />
+                    </figure>
+                  ))}
+                </div>
+              ) : featuredArticle.featuredImageUrl ? (
                 <img src={featuredArticle.featuredImageUrl} alt="" />
               ) : null}
               <div className="featured-article-copy">

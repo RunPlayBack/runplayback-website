@@ -531,6 +531,27 @@ button {
   width: 100%;
 }
 
+.versus-hero-images {
+  display: grid;
+  gap: 2px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0 0 34px;
+}
+
+.versus-hero-images figure {
+  background: #ffffff;
+  margin: 0;
+  overflow: hidden;
+}
+
+.versus-hero-images img {
+  aspect-ratio: 16 / 9;
+  background: #ffffff;
+  display: block;
+  object-fit: contain;
+  width: 100%;
+}
+
 .copy {
   color: #333333;
   font-size: 1.06rem;
@@ -720,6 +741,17 @@ button {
 
 .article-video-section {
   margin-top: 42px;
+}
+
+.article-video-list {
+  display: grid;
+  gap: 28px;
+}
+
+.article-video-item h3 {
+  font-size: clamp(1.1rem, 2vw, 1.35rem);
+  line-height: 1.15;
+  margin: 0 0 12px;
 }
 
 .article-link-list {
@@ -1138,10 +1170,30 @@ button {
   background: #fff45b;
 }
 
-.featured-article img {
+.featured-article-card > img {
   aspect-ratio: 16 / 9;
   display: block;
   height: auto;
+  object-fit: contain;
+  width: 100%;
+}
+
+.featured-versus-images {
+  display: grid;
+  gap: 2px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: clamp(16px, 3vw, 34px) clamp(16px, 3vw, 34px) 0;
+}
+
+.featured-versus-images figure {
+  background: transparent;
+  margin: 0;
+}
+
+.featured-versus-images img {
+  aspect-ratio: 4 / 3;
+  display: block;
+  height: 100%;
   object-fit: contain;
   width: 100%;
 }
@@ -1839,6 +1891,180 @@ button {
   resize: vertical;
 }
 
+.generator-form {
+  gap: 22px;
+}
+
+.generator-filter-form {
+  gap: 18px;
+}
+
+.generator-filter-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) 280px;
+}
+
+.generator-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.generated-title-note {
+  background: #f8faf4;
+  border: 1px solid #dce4d7;
+  border-radius: 8px;
+  color: var(--admin-ink);
+  display: grid;
+  font-weight: 800;
+  gap: 8px;
+  padding: 13px 14px;
+}
+
+.generated-title-note span {
+  color: #5d6b62;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.generated-title-note strong {
+  font-size: 1rem;
+}
+
+.generator-help {
+  background: #f8faf4;
+  border: 1px solid #dce4d7;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.source-article-list {
+  display: grid;
+  gap: 18px;
+}
+
+.source-article-option {
+  border: 1px solid #dce4d7;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.source-article-compact {
+  gap: 10px;
+}
+
+.source-article-header {
+  align-items: start;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) 82px;
+}
+
+.source-select {
+  align-items: start;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.source-select-compact {
+  align-items: center;
+  grid-template-columns: auto 112px minmax(0, 1fr);
+}
+
+.source-select span {
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.source-thumbnail {
+  aspect-ratio: 16 / 9;
+  background: #ffffff;
+  border: 1px solid #dce4d7;
+  border-radius: 6px;
+  display: block;
+  object-fit: cover;
+  width: 112px;
+}
+
+.source-thumbnail-empty {
+  align-items: center;
+  color: #5d6b62;
+  display: flex;
+  font-size: 0.72rem;
+  font-weight: 800;
+  justify-content: center;
+  text-align: center;
+}
+
+.source-order {
+  text-align: center;
+}
+
+.source-image-picker {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+
+.source-image-choice {
+  border: 1px solid #dce4d7;
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.source-image-choice input {
+  width: auto;
+}
+
+.source-image-choice img {
+  aspect-ratio: 16 / 9;
+  background: #ffffff;
+  display: block;
+  object-fit: contain;
+  width: 100%;
+}
+
+.source-image-choice span {
+  color: #5d6b62;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.generator-pagination {
+  align-items: center;
+  border-top: 1px solid #dce4d7;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: space-between;
+  padding-top: 18px;
+}
+
+.generator-pagination a,
+.generator-pagination span {
+  color: var(--admin-ink);
+  font-weight: 900;
+}
+
+.generator-pagination a {
+  border: 2px solid var(--admin-ink);
+  padding: 10px 14px;
+  text-decoration: none;
+}
+
+.generator-pagination a:hover {
+  background: var(--admin-ink);
+  color: white;
+}
+
 .form-error {
   background: #fff0f0;
   border: 1px solid #f0b9b9;
@@ -1961,6 +2187,7 @@ button {
   .home-metrics-footer,
   .home-topic-section,
   .reviews-topic-section,
+  .versus-hero-images,
   .featured-article {
     grid-template-columns: 1fr;
   }

@@ -120,11 +120,13 @@ export default async function AdminArticleEditorPage({
     authorName: article.author_name || "RunPlayBack",
     categorySlug: null,
     content: article.content,
+    articleType: null,
     displayPublishedAt: video?.published_at || article.published_at,
     featuredImageUrl: article.featured_image_url || "",
     id: article.id,
     links: [],
     publishedAt: article.published_at,
+    sourceArticles: [],
     seoDescription: article.seo_description || "",
     seoTitle: article.seo_title || article.title,
     slug: article.slug,
@@ -138,6 +140,16 @@ export default async function AdminArticleEditorPage({
           youtubeVideoId: video.youtube_video_id,
         }
       : null,
+    videos: video
+      ? [
+          {
+            publishedAt: video.published_at,
+            title: video.title,
+            videoUrl: video.video_url,
+            youtubeVideoId: video.youtube_video_id,
+          },
+        ]
+      : [],
   } satisfies PublicArticle);
 
   return (

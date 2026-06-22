@@ -61,6 +61,7 @@ export default async function AdminDashboardPage() {
           <span className="tag">YouTube metadata</span>
           <span className="tag">Caption draft generator</span>
           <span className="tag">YouTube description updates</span>
+          <span className="tag">Comparison guides</span>
         </div>
       </div>
     </AdminLayout>

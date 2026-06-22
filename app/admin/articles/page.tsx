@@ -55,6 +55,7 @@ export default async function AdminArticlesPage({
     const { data, error } = await supabase
       .from("articles")
       .select("id,title,slug,seo_description,featured_image_url,author_name,category_slug,content,status,published_at,created_at,updated_at,videos(title)")
+      .order("status", { ascending: true })
       .order("published_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false });
 
@@ -121,11 +122,13 @@ export default async function AdminArticlesPage({
               authorName: article.author_name || "RunPlayBack",
               categorySlug: null,
               content: article.content,
+              articleType: null,
               displayPublishedAt: null,
               featuredImageUrl: article.featured_image_url || "",
               id: article.id,
               links: [],
               publishedAt: null,
+              sourceArticles: [],
               seoDescription: article.seo_description || "",
               seoTitle: article.title,
               slug: article.slug,
@@ -139,6 +142,16 @@ export default async function AdminArticlesPage({
                     youtubeVideoId: "",
                   }
                 : null,
+              videos: video
+                ? [
+                    {
+                      publishedAt: null,
+                      title: video.title,
+                      videoUrl: "",
+                      youtubeVideoId: "",
+                    },
+                  ]
+                : [],
             } satisfies PublicArticle);
 
             return (

@@ -21,6 +21,7 @@ create table if not exists public.articles (
   featured_image_url text,
   author_name text not null default 'RunPlayBack',
   category_slug text,
+  article_type text not null default 'review' check (article_type in ('review', 'best_of', 'versus')),
   content text not null default '',
   status text not null default 'draft' check (status in ('draft', 'published')),
   published_at timestamptz,
@@ -78,6 +79,27 @@ create table if not exists public.youtube_description_update_logs (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.article_sources (
+  id uuid primary key default gen_random_uuid(),
+  article_id uuid not null references public.articles(id) on delete cascade,
+  source_article_id uuid not null references public.articles(id) on delete cascade,
+  sort_order integer not null default 0,
+  notes text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.generated_article_images (
+  id uuid primary key default gen_random_uuid(),
+  article_id uuid not null references public.articles(id) on delete cascade,
+  source_article_id uuid references public.articles(id) on delete set null,
+  image_url text not null,
+  alt_text text,
+  caption text,
+  placement text,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
 create or replace function public.is_admin()
 returns boolean
 language sql
@@ -99,6 +121,8 @@ alter table public.admins enable row level security;
 alter table public.youtube_oauth_tokens enable row level security;
 alter table public.video_still_jobs enable row level security;
 alter table public.youtube_description_update_logs enable row level security;
+alter table public.article_sources enable row level security;
+alter table public.generated_article_images enable row level security;
 
 create policy "Published articles are readable by everyone"
 on public.articles
@@ -214,6 +238,44 @@ with check (public.is_admin());
 
 create policy "Admins can manage YouTube description update logs"
 on public.youtube_description_update_logs
+for all
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "Published article sources are readable by everyone"
+on public.article_sources
+for select
+using (
+  exists (
+    select 1
+    from public.articles
+    where public.articles.id = public.article_sources.article_id
+      and public.articles.status = 'published'
+  )
+);
+
+create policy "Admins can manage article sources"
+on public.article_sources
+for all
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "Published generated article images are readable by everyone"
+on public.generated_article_images
+for select
+using (
+  exists (
+    select 1
+    from public.articles
+    where public.articles.id = public.generated_article_images.article_id
+      and public.articles.status = 'published'
+  )
+);
+
+create policy "Admins can manage generated article images"
+on public.generated_article_images
 for all
 to authenticated
 using (public.is_admin())

@@ -6,6 +6,7 @@ const adminLinks = [
   { href: "/admin/videos", label: "Videos" },
   { href: "/admin/popular-videos", label: "Popular Videos" },
   { href: "/admin/articles", label: "Reviews" },
+  { href: "/admin/generate-article", label: "Guide Generator" },
   { href: "/admin/missing-images", label: "Image Repair" },
   { href: "/admin/video-stills", label: "Video Stills" },
   { href: "/admin/youtube-description-updater", label: "Description Updater" },
