@@ -1891,6 +1891,42 @@ button {
   resize: vertical;
 }
 
+.featured-image-upload {
+  align-items: end;
+  background: #f7faf4;
+  border: 1px solid #dce4d7;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 180px minmax(0, 1fr) auto;
+  padding: 14px;
+}
+
+.featured-image-upload img,
+.featured-image-placeholder {
+  aspect-ratio: 16 / 9;
+  background: white;
+  border: 1px solid #dce4d7;
+  border-radius: 6px;
+  display: grid;
+  height: 100%;
+  object-fit: contain;
+  place-items: center;
+  width: 100%;
+}
+
+.featured-image-placeholder {
+  color: #667467;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 12px;
+  text-align: center;
+}
+
+.featured-image-upload input[type="file"] {
+  padding: 10px;
+}
+
 .generator-form {
   gap: 22px;
 }

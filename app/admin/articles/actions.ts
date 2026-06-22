@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
 import {
   findArticleImageCandidates,
   insertArticleImages,
@@ -13,9 +14,82 @@ function getString(formData: FormData, key: string) {
   return String(formData.get(key) || "").trim();
 }
 
+const articleUploadBucket =
+  process.env.SUPABASE_ARTICLE_UPLOAD_BUCKET || "article-stills";
+const maxFeaturedImageSize = 8 * 1024 * 1024;
+const allowedFeaturedImageTypes = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+
 function redirectWithError(path: string, error: unknown): never {
   const message = error instanceof Error ? error.message : "Unable to save changes.";
   redirect(`${path}?error=${encodeURIComponent(message)}`);
+}
+
+function getSupabaseAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    throw new Error(
+      "Supabase upload credentials are missing. Add NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
+    );
+  }
+
+  return createSupabaseAdminClient(url, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+    },
+  });
+}
+
+async function ensureArticleUploadBucket() {
+  const supabase = getSupabaseAdminClient();
+  const { error } = await supabase.storage.createBucket(articleUploadBucket, {
+    public: true,
+  });
+
+  if (error && !/already exists/i.test(error.message)) {
+    throw error;
+  }
+
+  return supabase;
+}
+
+function getSafeUploadName(file: File) {
+  const extensionFromType =
+    file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const baseName =
+    file.name
+      .replace(/\.[^.]+$/, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || "featured-image";
+
+  return `${baseName}.${extensionFromType}`;
+}
+
+function getArticleUpdateFromFormData(
+  formData: FormData,
+  featuredImageUrl: string,
+  categorySlug: string | null,
+) {
+  return {
+    title: getString(formData, "title"),
+    slug: getString(formData, "slug"),
+    seo_title: getString(formData, "seo_title"),
+    seo_description: getString(formData, "seo_description"),
+    featured_image_url: featuredImageUrl,
+    author_name: getString(formData, "author_name") || "RunPlayBack",
+    category_slug: categorySlug,
+    content: cleanBrokenMarkdownImageFragments(
+      String(formData.get("content") || ""),
+    ),
+    updated_at: new Date().toISOString(),
+  };
 }
 
 type ArticleImageSourceRow = {
@@ -148,19 +222,13 @@ export async function saveArticle(articleId: string, formData: FormData) {
 
   const { error } = await supabase
     .from("articles")
-    .update({
-      title: getString(formData, "title"),
-      slug: getString(formData, "slug"),
-      seo_title: getString(formData, "seo_title"),
-      seo_description: getString(formData, "seo_description"),
-      featured_image_url: getString(formData, "featured_image_url"),
-      author_name: getString(formData, "author_name") || "RunPlayBack",
-      category_slug: categorySlug,
-      content: cleanBrokenMarkdownImageFragments(
-        String(formData.get("content") || ""),
+    .update(
+      getArticleUpdateFromFormData(
+        formData,
+        getString(formData, "featured_image_url"),
+        categorySlug,
       ),
-      updated_at: new Date().toISOString(),
-    })
+    )
     .eq("id", articleId);
 
   if (error) {
@@ -172,6 +240,91 @@ export async function saveArticle(articleId: string, formData: FormData) {
   revalidatePath("/articles");
   revalidateCategoryPages();
   redirect(`/admin/articles/${articleId}?saved=1`);
+}
+
+export async function uploadFeaturedImage(articleId: string, formData: FormData) {
+  const file = formData.get("featured_image_file");
+  const supabase = await createClient();
+
+  if (!supabase) {
+    redirect("/admin/login");
+  }
+
+  let categorySlug: string | null = null;
+
+  try {
+    categorySlug = getCategorySlug(formData);
+  } catch (error) {
+    redirectWithError(`/admin/articles/${articleId}`, error);
+  }
+
+  if (!(file instanceof File) || file.size === 0) {
+    redirectWithError(
+      `/admin/articles/${articleId}`,
+      new Error("Choose an image to upload."),
+    );
+  }
+
+  if (!allowedFeaturedImageTypes.has(file.type)) {
+    redirectWithError(
+      `/admin/articles/${articleId}`,
+      new Error("Upload a JPG, PNG, or WebP image."),
+    );
+  }
+
+  if (file.size > maxFeaturedImageSize) {
+    redirectWithError(
+      `/admin/articles/${articleId}`,
+      new Error("Upload an image smaller than 8 MB."),
+    );
+  }
+
+  let publicUrl = "";
+
+  try {
+    const adminSupabase = await ensureArticleUploadBucket();
+    const safeName = getSafeUploadName(file);
+    const objectPath = `featured-images/${articleId}/${Date.now()}-${safeName}`;
+    const bytes = await file.arrayBuffer();
+    const { error: uploadError } = await adminSupabase.storage
+      .from(articleUploadBucket)
+      .upload(objectPath, bytes, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data } = adminSupabase.storage
+      .from(articleUploadBucket)
+      .getPublicUrl(objectPath);
+
+    publicUrl = data.publicUrl;
+  } catch (error) {
+    redirectWithError(`/admin/articles/${articleId}`, error);
+  }
+
+  const { error } = await supabase
+    .from("articles")
+    .update(getArticleUpdateFromFormData(formData, publicUrl, categorySlug))
+    .eq("id", articleId);
+
+  if (error) {
+    redirectWithError(`/admin/articles/${articleId}`, error);
+  }
+
+  const slug = getString(formData, "slug");
+
+  revalidatePath("/admin/articles");
+  revalidatePath(`/admin/articles/${articleId}`);
+  revalidatePath("/articles");
+  if (slug) {
+    revalidatePath(`/articles/${slug}`);
+  }
+  revalidateCategoryPages();
+  redirect(`/admin/articles/${articleId}?featuredImageUpdated=1`);
 }
 
 export async function updateArticleCategory(articleId: string, formData: FormData) {

@@ -9,6 +9,7 @@ import {
   publishArticle,
   saveArticle,
   unpublishArticle,
+  uploadFeaturedImage,
 } from "../actions";
 
 type AdminArticleEditorPageProps = {
@@ -17,6 +18,7 @@ type AdminArticleEditorPageProps = {
   }>;
   searchParams?: Promise<{
     error?: string;
+    featuredImageUpdated?: string;
     published?: string;
     imagesUpdated?: string;
     saved?: string;
@@ -54,6 +56,7 @@ type AdminArticle = {
 
 function getStatusMessage(searchParams?: {
   error?: string;
+  featuredImageUpdated?: string;
   published?: string;
   imagesUpdated?: string;
   saved?: string;
@@ -73,6 +76,10 @@ function getStatusMessage(searchParams?: {
 
   if (searchParams?.imagesUpdated) {
     return { className: "form-success", text: "Product images updated." };
+  }
+
+  if (searchParams?.featuredImageUpdated) {
+    return { className: "form-success", text: "Featured image uploaded." };
   }
 
   if (searchParams?.unpublished) {
@@ -107,6 +114,7 @@ export default async function AdminArticleEditorPage({
   }
 
   const saveArticleWithId = saveArticle.bind(null, article.id);
+  const uploadFeaturedImageWithId = uploadFeaturedImage.bind(null, article.id);
   const addProductImagesToArticleWithId = addProductImagesToArticle.bind(
     null,
     article.id,
@@ -197,6 +205,28 @@ export default async function AdminArticleEditorPage({
             defaultValue={article.featured_image_url || ""}
           />
         </label>
+        <div className="featured-image-upload">
+          {article.featured_image_url ? (
+            <img src={article.featured_image_url} alt="" />
+          ) : (
+            <div className="featured-image-placeholder">No featured image yet</div>
+          )}
+          <label>
+            Upload featured image
+            <input
+              accept="image/jpeg,image/png,image/webp"
+              name="featured_image_file"
+              type="file"
+            />
+          </label>
+          <button
+            className="button secondary-button"
+            formAction={uploadFeaturedImageWithId}
+            type="submit"
+          >
+            Upload Image
+          </button>
+        </div>
         <label>
           Author
           <select name="author_name" defaultValue={article.author_name || "RunPlayBack"}>
