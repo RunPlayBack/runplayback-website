@@ -129,7 +129,10 @@ function mapSupabaseArticle(row: SupabaseArticleRow): PublicArticle {
       : [];
   const video = videoRows[0] || null;
   const fallbackYouTubeVideoId =
-    video?.youtube_video_id || getYouTubeVideoIdFromText(`${row.content}\n${row.slug}`);
+    video?.youtube_video_id ||
+    getYouTubeVideoIdFromText(
+      row.article_type ? row.content || "" : `${row.content}\n${row.slug}`,
+    );
   const videos = videoRows
     .map((videoRow) => ({
       publishedAt: videoRow.published_at || null,
