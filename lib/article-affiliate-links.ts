@@ -67,7 +67,15 @@ export function getAffiliateLinkCandidates(label: string) {
   }
 
   const candidates = new Set<string>();
-  candidates.add(normalized);
+  const addCandidate = (value: string) => {
+    const cleaned = normalizeWhitespace(value);
+
+    if (cleaned) {
+      candidates.add(cleaned);
+    }
+  };
+
+  addCandidate(normalized);
 
   const parts = normalized
     .split(/\s+(?:x|vs\.?|versus)\s+/i)
@@ -83,7 +91,17 @@ export function getAffiliateLinkCandidates(label: string) {
     );
 
     if (cleanedPart.length >= 3) {
-      candidates.add(cleanedPart);
+      addCandidate(cleanedPart);
+
+      const words = cleanedPart.split(/\s+/).filter(Boolean);
+
+      if (words.length >= 2) {
+        addCandidate(words.slice(1).join(" "));
+      }
+
+      if (words.length >= 3) {
+        addCandidate(words.slice(0, -1).join(" "));
+      }
     }
   }
 
@@ -148,6 +166,24 @@ function linkifyPlainTextSegment(
   return output;
 }
 
+function buildFallbackAffiliateLine(
+  links: Array<{ label: string; url: string }>,
+  usedUrls: Set<string>,
+) {
+  const remainingLinks = links.filter((link) => !usedUrls.has(link.url));
+
+  if (!remainingLinks.length) {
+    return "";
+  }
+
+  const fallbackLinks = remainingLinks.slice(0, 2);
+  const linkedLabels = fallbackLinks
+    .map((link) => `[${link.label}](${link.url})`)
+    .join(" and ");
+
+  return `Read more: ${linkedLabels}`;
+}
+
 function linkifyLine(
   line: string,
   links: Array<{ label: string; url: string }>,
@@ -200,6 +236,7 @@ export function injectAffiliateLinksIntoContent(
   const usedUrls = new Set<string>();
   const output: string[] = [];
   let inLinksSection = false;
+  let insertedInlineAffiliateLink = false;
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -215,7 +252,38 @@ export function injectAffiliateLinksIntoContent(
       continue;
     }
 
-    output.push(linkifyLine(line, affiliateLinks, usedUrls));
+    const linkedLine = linkifyLine(line, affiliateLinks, usedUrls);
+
+    if (linkedLine !== line && !insertedInlineAffiliateLink) {
+      insertedInlineAffiliateLink = true;
+    }
+
+    output.push(linkedLine);
+  }
+
+  if (!insertedInlineAffiliateLink) {
+    const fallbackLine = buildFallbackAffiliateLine(affiliateLinks, usedUrls);
+
+    if (fallbackLine) {
+      const insertionIndex = output.findIndex((line) => {
+        const trimmed = line.trim();
+
+        return (
+          trimmed &&
+          !/^#{1,6}\s+/.test(trimmed) &&
+          !/^[-*•]\s+/.test(trimmed) &&
+          !/^\d+\.\s+/.test(trimmed) &&
+          !/^!\[[^\]]*]\(https?:\/\/[^)]+\)$/i.test(trimmed)
+        );
+      });
+
+      if (insertionIndex === -1) {
+        output.push("");
+        output.push(fallbackLine);
+      } else {
+        output.splice(insertionIndex + 1, 0, "", fallbackLine);
+      }
+    }
   }
 
   return output.join("\n");
