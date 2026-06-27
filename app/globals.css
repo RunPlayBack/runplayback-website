@@ -1821,6 +1821,33 @@ button {
   color: #5d6b62;
 }
 
+.video-still-filename-preview {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.video-still-filename-row {
+  align-items: start;
+  background: white;
+  border: 1px solid #dce4d7;
+  border-radius: 8px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr);
+  padding: 14px;
+}
+
+.video-still-filename-row strong {
+  color: var(--admin-ink);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.video-still-filename-row p {
+  overflow-wrap: anywhere;
+}
+
 .popular-video-form {
   display: grid;
   gap: 12px;

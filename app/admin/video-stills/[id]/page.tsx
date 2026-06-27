@@ -4,8 +4,13 @@ import { notFound } from "next/navigation";
 import { AdminLayout } from "@/components/AdminLayout";
 import { createClient } from "@/lib/supabase/server";
 import {
+  resolveStillFilenameArray,
+  suggestStillFilenames,
+} from "../../../../scripts/rename-article-still-filenames.mjs";
+import {
   queueAllArticleVideoStillsRegeneration,
   queueArticleVideoStillRegeneration,
+  renameArticleVideoStillFilenames,
   replaceArticleVideoStill,
 } from "../actions";
 
@@ -16,7 +21,9 @@ type VideoStillEditorPageProps = {
   searchParams?: Promise<{
     error?: string;
     queued?: string;
+    preview_filenames?: string;
     saved?: string;
+    renamed?: string;
   }>;
 };
 
@@ -27,11 +34,13 @@ type ArticleRow = {
   title: string;
   videos:
     | {
+        description: string | null;
         title: string | null;
         video_url: string | null;
         youtube_video_id: string | null;
       }
     | Array<{
+        description: string | null;
         title: string | null;
         video_url: string | null;
         youtube_video_id: string | null;
@@ -41,6 +50,14 @@ type ArticleRow = {
 
 type VideoStill = {
   alt: string;
+  url: string;
+};
+
+type FilenamePreviewItem = {
+  alt: string;
+  currentFilename: string;
+  index: number;
+  proposedFilename: string;
   url: string;
 };
 
@@ -74,6 +91,7 @@ function getVideo(article: ArticleRow) {
 function getStatusMessage(searchParams?: {
   error?: string;
   queued?: string;
+  renamed?: string;
   saved?: string;
 }) {
   if (searchParams?.error) {
@@ -92,7 +110,25 @@ function getStatusMessage(searchParams?: {
     return { className: "form-success", text: "Video still regeneration queued." };
   }
 
+  if (searchParams?.renamed) {
+    return {
+      className: "form-success",
+      text: `Renamed ${searchParams.renamed} still${searchParams.renamed === "1" ? "" : "s"}.`,
+    };
+  }
+
   return null;
+}
+
+function getCurrentFilename(url: string) {
+  try {
+    const parsed = new URL(url);
+    const leaf = parsed.pathname.split("/").filter(Boolean).pop() || "";
+
+    return decodeURIComponent(leaf);
+  } catch {
+    return "";
+  }
 }
 
 function getLatestJobForStill(jobs: VideoStillJob[], stillIndex: number) {
@@ -193,7 +229,7 @@ export default async function VideoStillEditorPage({
 
   const { data: article, error } = await supabase
     .from("articles")
-    .select("id,title,slug,content,videos(title,video_url,youtube_video_id)")
+    .select("id,title,slug,content,videos(title,description,video_url,youtube_video_id)")
     .eq("id", id)
     .single<ArticleRow>();
 
@@ -209,9 +245,57 @@ export default async function VideoStillEditorPage({
     .returns<(VideoStillJob & { created_at: string })[]>();
 
   const video = getVideo(article);
-  const statusMessage = getStatusMessage(resolvedSearchParams);
+  let statusMessage = getStatusMessage(resolvedSearchParams);
+  let previewError = "";
   const stills = getVideoStills(article.content);
   const queueAllWithId = queueAllArticleVideoStillsRegeneration.bind(null, article.id);
+  const renameStillFilenamesWithId = renameArticleVideoStillFilenames.bind(
+    null,
+    article.id,
+  );
+  let filenamePreview: FilenamePreviewItem[] | null = null;
+
+  if (resolvedSearchParams?.preview_filenames === "1" && stills.length) {
+    try {
+      const suggestion = await suggestStillFilenames({
+        article: {
+          content: article.content,
+          slug: article.slug,
+          title: article.title,
+        },
+        video: {
+          description: video?.description || "",
+          title: video?.title || article.title,
+          video_url: video?.video_url || "",
+        },
+        stills: stills.map((still, index) => ({
+          index,
+          imageUrl: still.url,
+          timestamp: "",
+          context: still.alt || "",
+        })),
+      });
+      const proposedFilenames = resolveStillFilenameArray({
+        articleSlug: article.slug,
+        stillCount: stills.length,
+        manualEntry: null,
+        aiFilenames: suggestion.filenames,
+      });
+
+      filenamePreview = stills.map((still, index) => ({
+        alt: still.alt || `Video still ${index + 1}`,
+        currentFilename: getCurrentFilename(still.url),
+        index,
+        proposedFilename: proposedFilenames[index] || "",
+        url: still.url,
+      }));
+    } catch (filenamePreviewError) {
+      previewError =
+        filenamePreviewError instanceof Error
+          ? filenamePreviewError.message
+          : "Unable to build a filename preview.";
+    }
+  }
 
   return (
     <AdminLayout>
@@ -245,6 +329,7 @@ export default async function VideoStillEditorPage({
       {statusMessage ? (
         <p className={statusMessage.className}>{statusMessage.text}</p>
       ) : null}
+      {previewError ? <p className="form-error">{previewError}</p> : null}
       <div className="admin-card">
         <h2>Replace one still at a time</h2>
         <p>
@@ -263,6 +348,51 @@ export default async function VideoStillEditorPage({
 {`cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
 npm run process:video-stills -- --apply --limit=10 --continue-on-error --cookies-from-browser=chrome --candidates=11 --sample-window=150`}
         </pre>
+      </div>
+      <div className="admin-card">
+        <h2>Rename still filenames</h2>
+        <p>
+          Generate clean, descriptive filenames for the stills on this article
+          before applying the changes.
+        </p>
+        <div className="video-row-actions">
+          <form action="" method="get">
+            <input name="preview_filenames" type="hidden" value="1" />
+            <button className="button secondary-button" type="submit">
+              Preview Filenames
+            </button>
+          </form>
+          <form action={renameStillFilenamesWithId}>
+            <button className="button" type="submit">
+              Apply Filename Update
+            </button>
+          </form>
+        </div>
+        {filenamePreview ? (
+          <div className="video-still-filename-preview">
+            {filenamePreview.map((item) => (
+              <div className="video-still-filename-row" key={`${item.url}-${item.index}`}>
+                <div>
+                  <p className="meta">Still {item.index + 1}</p>
+                  <p>{item.alt}</p>
+                </div>
+                <div>
+                  <strong>Current</strong>
+                  <p>{item.currentFilename || "Unknown filename"}</p>
+                </div>
+                <div>
+                  <strong>Proposed</strong>
+                  <p>{item.proposedFilename || "Could not suggest a filename"}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="meta">
+            Click preview to review the suggested filenames before renaming the
+            files in Supabase.
+          </p>
+        )}
       </div>
       <div className="video-still-grid">
         {stills.length ? (

@@ -115,6 +115,63 @@ unless `--publish` is included.
 YouTube Shorts are skipped automatically. The script only creates drafts for videos
 that are at least 60 seconds long.
 
+## Rename Article Stills With Human-Friendly Filenames
+
+The filename renamer can keep the current article-still paths stable, or it can apply a
+human-approved manifest of better filenames when you already know what each frame shows.
+This is the safest way to batch rename images without guessing from article text alone.
+
+Dry run with the current automatic naming:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run rename:article-stills -- --quiet
+```
+
+Apply the automatic naming:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run rename:article-stills -- --apply --quiet
+```
+
+Apply a manifest of manual filenames:
+
+```json
+{
+  "custom-72v-enduro-ebike-build-review-qs205-fardriver-etDuQ9fmzZw": [
+    "controller-heatsink.jpg",
+    "dashboard-screen.jpg",
+    "wide-ride-shot.jpg",
+    "rear-drive-chain.jpg"
+  ]
+}
+```
+
+Run the manifest:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run rename:article-stills -- --manifest=./article-still-filenames.json --apply --quiet
+```
+
+Let OpenAI suggest filenames from the actual still images, one article at a time:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run rename:article-stills -- --slug=custom-72v-enduro-ebike-build-review-qs205-fardriver-etDuQ9fmzZw --ai-filenames
+```
+
+Apply those AI suggestions once the preview looks right:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run rename:article-stills -- --slug=custom-72v-enduro-ebike-build-review-qs205-fardriver-etDuQ9fmzZw --ai-filenames --apply
+```
+
+The AI filename mode looks at each still image directly, combines that with the article context,
+and falls back to the current slug-based naming if OpenAI does not return a usable filename.
+
 ## Repair Missing Article Product Images
 
 If published reviews are missing the inline product image after the first paragraph,
@@ -199,6 +256,12 @@ Supabase Storage bucket, and inserts the stills above section headings in the
 matching review. Stills are not inserted below Related Reviews, Links, or video
 sections.
 
+If you want the uploaded stills to use smarter human-readable filenames, add
+`--ai-filenames`. The script will extract the frames first, ask OpenAI to name
+the stills from the actual images plus article context, and then upload them
+with those filenames. If OpenAI fails, it falls back to the normal slug-based
+names so the batch can keep moving.
+
 This is intentionally a background script instead of a normal Admin button
 because extracting frames requires `yt-dlp` and `ffmpeg`, and can take several
 minutes for larger batches.
@@ -207,6 +270,15 @@ Install the local tools if needed:
 
 ```bash
 brew install yt-dlp ffmpeg
+```
+
+If you already know the final filenames for a specific article, you can pass
+the same manifest format used by the filename renamer so the stills are named
+correctly at import time:
+
+```bash
+cd "/Users/rik/Documents/RunPlayBack Website Rebuild"
+npm run import:video-stills -- --slug=custom-72v-enduro-ebike-build-review-qs205-fardriver-etDuQ9fmzZw --apply --manifest=./article-still-filenames.json
 ```
 
 Preview the next five published reviews that need stills:

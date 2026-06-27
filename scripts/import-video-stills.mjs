@@ -4,6 +4,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path, { resolve } from "node:path";
+import {
+  resolveStillFilenameArray,
+  suggestStillFilenames,
+} from "./still-filename-ai.mjs";
 
 const defaultBucket = "article-stills";
 const defaultStillCount = 4;
@@ -159,6 +163,91 @@ function getSafeZoom(value) {
   const zoom = Number(value) || defaultZoom;
 
   return Math.min(2.25, Math.max(1, zoom));
+}
+
+function slugifyFilePart(value = "") {
+  return String(value)
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 140);
+}
+
+function normalizeFilename(value = "") {
+  const trimmed = String(value).trim().replace(/\\/g, "/");
+
+  if (!trimmed) {
+    return "";
+  }
+
+  const leaf = trimmed.split("/").filter(Boolean).pop() || "";
+  const extMatch = leaf.match(/\.([a-z0-9]{2,5})$/i);
+  const extension = extMatch ? `.${extMatch[1].toLowerCase()}` : ".jpg";
+  const base = extMatch ? leaf.slice(0, -extMatch[0].length) : leaf;
+  const safeBase = slugifyFilePart(base);
+
+  return safeBase ? `${safeBase}${extension}` : "";
+}
+
+function loadJsonManifest(manifestPath) {
+  if (!manifestPath) {
+    return null;
+  }
+
+  const resolved = resolve(process.cwd(), manifestPath);
+
+  if (!existsSync(resolved)) {
+    throw new Error(`Manifest file not found: ${resolved}`);
+  }
+
+  return JSON.parse(readFileSync(resolved, "utf8"));
+}
+
+function getManifestFilename(manifest, articleSlug, stillIndex) {
+  if (!manifest || !articleSlug) {
+    return "";
+  }
+
+  const entry = manifest[articleSlug];
+
+  if (!entry) {
+    return "";
+  }
+
+  if (Array.isArray(entry)) {
+    return normalizeFilename(entry[stillIndex] || "");
+  }
+
+  if (typeof entry === "string") {
+    return normalizeFilename(stillIndex === 0 ? entry : "");
+  }
+
+  if (typeof entry === "object") {
+    const keys = [String(stillIndex + 1), String(stillIndex), `still-${stillIndex + 1}`];
+
+    for (const key of keys) {
+      if (entry[key]) {
+        return normalizeFilename(entry[key]);
+      }
+    }
+  }
+
+  return "";
+}
+
+function getStillObjectPath(article, stillIndex, options = {}) {
+  const safeSlug = slugifyFilePart(article.slug || article.title || "runplayback-review");
+  const manifestFilename = getManifestFilename(options.manifest, article.slug, stillIndex);
+
+  if (manifestFilename) {
+    return `${safeSlug}/${manifestFilename}`;
+  }
+
+  const safeIndex = String(stillIndex + 1).padStart(2, "0");
+
+  return `${safeSlug}/${safeSlug}-${safeIndex}.jpg`;
 }
 
 function getFrameFilter(zoom) {
@@ -782,7 +871,7 @@ async function processArticle(supabase, article, options) {
   console.log(`\n${article.title}`);
   console.log(`Extracting ${options.count} stills from ${videoUrl}`);
 
-  if (!options.apply) {
+  if (!options.apply && !options.aiFilenames) {
     console.log("Dry run: no images extracted or saved.");
     return true;
   }
@@ -794,7 +883,7 @@ async function processArticle(supabase, article, options) {
     const duration = Number(videoInfo.duration || 0);
     const timestamps = getFrameTimestamps(duration, options.count);
     const directVideoUrl = await getDirectVideoUrl(videoUrl, options);
-    const stills = [];
+    const extractedStills = [];
 
     for (const [index, timestamp] of timestamps.entries()) {
       const frameNumber = index + 1;
@@ -806,10 +895,8 @@ async function processArticle(supabase, article, options) {
         timestamp,
         zoom: options.zoom,
       });
-      const zoomLabel = `z${String(options.zoom).replace(".", "p")}`;
-      const fileName = `${videoId}-${String(frameNumber).padStart(2, "0")}-${zoomLabel}.jpg`;
+      const fileName = `still-${String(frameNumber).padStart(2, "0")}.jpg`;
       const filePath = path.join(tempDir, fileName);
-      const objectPath = `${videoId}/${fileName}`;
 
       await extractFrame({
         directVideoUrl,
@@ -818,21 +905,85 @@ async function processArticle(supabase, article, options) {
         zoom: options.zoom,
       });
 
-      const publicUrl = await uploadStill({
-        bucket: options.bucket,
+      extractedStills.push({
+        bestTimestamp: bestFrame.timestamp,
         filePath,
-        objectPath,
-        supabase,
-      });
-
-      stills.push({
-        alt: `Video still from ${article.title} at ${formatTimestamp(bestFrame.timestamp)}`,
-        url: publicUrl,
+        index,
+        targetTimestamp: timestamp,
       });
       console.log(
         `Saved still ${frameNumber}/${options.count} at ${formatTimestamp(bestFrame.timestamp)} ` +
           `(target ${formatTimestamp(timestamp)}, score ${bestFrame.score.toFixed(1)})`,
       );
+    }
+
+    const videoContext = {
+      description: videoInfo.description || "",
+      title: videoInfo.title || videoInfo.fulltitle || article.title,
+      video_url: videoUrl,
+    };
+    let aiFilenames = [];
+
+    if (options.aiFilenames) {
+      try {
+        const suggestion = await suggestStillFilenames({
+          article,
+          video: videoContext,
+          stills: extractedStills.map((still) => ({
+            context: `Target frame ${formatTimestamp(still.targetTimestamp)}`,
+            filePath: still.filePath,
+            index: still.index,
+            timestamp: formatTimestamp(still.bestTimestamp),
+          })),
+        });
+        aiFilenames = suggestion.filenames;
+
+        if (!options.quiet) {
+          console.log(`AI filename suggestions: ${aiFilenames.join(", ")}`);
+        }
+      } catch (error) {
+        console.log(`AI filename suggestion failed: ${error.message}`);
+      }
+    }
+
+    const resolvedFilenames = resolveStillFilenameArray({
+      articleSlug: article.slug,
+      stillCount: extractedStills.length,
+      manualEntry: options.manifest?.[article.slug],
+      aiFilenames,
+    });
+
+    if (!options.apply) {
+      console.log("Dry run: no images were uploaded or saved to Supabase.");
+      if (options.aiFilenames) {
+        console.log(`Proposed filenames: ${resolvedFilenames.join(", ")}`);
+      }
+      return true;
+    }
+
+    const articleManifest = {
+      ...(options.manifest || {}),
+      [article.slug]: resolvedFilenames,
+    };
+    const stills = [];
+
+    for (const [index, still] of extractedStills.entries()) {
+      const objectPath = getStillObjectPath(article, index, {
+        ...options,
+        manifest: articleManifest,
+      });
+
+      const publicUrl = await uploadStill({
+        bucket: options.bucket,
+        filePath: still.filePath,
+        objectPath,
+        supabase,
+      });
+
+      stills.push({
+        alt: `Video still from ${article.title} at ${formatTimestamp(still.bestTimestamp)}`,
+        url: publicUrl,
+      });
     }
 
     const nextContent = distributeVideoStills(article.content || "", stills);
@@ -891,10 +1042,9 @@ async function extractReplacementStill(supabase, article, stillIndex, options, j
       timestamp,
       zoom: options.zoom,
     });
-    const zoomLabel = `z${String(options.zoom).replace(".", "p")}`;
-    const fileName = `${videoId}-${String(stillIndex + 1).padStart(2, "0")}-${jobId}-${zoomLabel}.jpg`;
+    const objectPath = getStillObjectPath(article, stillIndex, options);
+    const fileName = path.basename(objectPath);
     const filePath = path.join(tempDir, fileName);
-    const objectPath = `${videoId}/${fileName}`;
 
     await extractFrame({
       directVideoUrl,
@@ -1094,12 +1244,14 @@ async function main() {
       defaultCandidateCount,
     cookiesFromBrowser: getArg("cookies-from-browser", ""),
     count: Number(getArg("count", String(defaultStillCount))) || defaultStillCount,
+    aiFilenames: hasFlag("ai-filenames"),
     force: hasFlag("force"),
     continueOnError: hasFlag("continue-on-error") || hasFlag("all"),
     maxErrors: Number(getArg("max-errors", "20")) || 20,
     processQueue: hasFlag("process-queue"),
     reflowOnly: hasFlag("reflow-only"),
     retryFailed: hasFlag("retry-failed"),
+    manifest: loadJsonManifest(getArg("manifest", "")),
     sampleWindow:
       Number(getArg("sample-window", String(defaultSampleWindow))) ||
       defaultSampleWindow,
