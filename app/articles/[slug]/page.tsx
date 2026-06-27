@@ -4,6 +4,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getArticleCategory } from "@/lib/article-categories";
 import {
+  affiliateDisclosureText,
+  injectAffiliateLinksIntoContent,
+  isAffiliateEligibleUrl,
+} from "@/lib/article-affiliate-links";
+import {
   getPublishedArticleBySlug,
   getPublishedArticles,
 } from "@/lib/articles";
@@ -234,6 +239,12 @@ function getArticleLinkLabel(label: string, url: string) {
   return cleanLabel;
 }
 
+function getArticleLinkRel(url: string) {
+  return isAffiliateEligibleUrl(url)
+    ? "sponsored nofollow noopener noreferrer"
+    : "noopener noreferrer";
+}
+
 function renderLinkedText(text: string, keyPrefix: string): ReactNode[] {
   const markdownLinkPattern = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
   const rawUrlPattern = /(https?:\/\/[^\s<]+)/g;
@@ -258,7 +269,7 @@ function renderLinkedText(text: string, keyPrefix: string): ReactNode[] {
         className="inline-link"
         href={url}
         key={`${keyPrefix}-markdown-${markdownMatch.index}`}
-        rel="noreferrer"
+        rel={getArticleLinkRel(url)}
         target="_blank"
       >
         {label}
@@ -290,7 +301,7 @@ function renderLinkedText(text: string, keyPrefix: string): ReactNode[] {
           className="inline-link"
           href={cleanUrl}
           key={`${prefix}-url-${index}`}
-          rel="noreferrer"
+          rel={getArticleLinkRel(cleanUrl)}
           target="_blank"
         >
           {cleanUrl}
@@ -1439,8 +1450,12 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
       platform: "email" as const,
     },
   ];
-  const rawArticleBlocks = buildArticleBlocks(
+  const articleContentWithAffiliateLinks = injectAffiliateLinksIntoContent(
     article.content,
+    article.links,
+  );
+  const rawArticleBlocks = buildArticleBlocks(
+    articleContentWithAffiliateLinks,
     article.featuredImageUrl,
     article.video?.youtubeVideoId,
   );
@@ -1460,6 +1475,9 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
         ...versusSourceVideoStillBlocks,
       ])
     : reflowVideoStillBlocks(articleBlocksWithFallback, targetVideoStillCount);
+  const hasAffiliateLinks = article.links.some((link) =>
+    isAffiliateEligibleUrl(link.url),
+  );
   const firstBodyLinksBlockIndex = articleBlocks.findIndex(
     (block) => block.type === "heading" && normalizeHeading(block.text) === "links",
   );
@@ -1615,6 +1633,9 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
               {formatArticleDate(article.displayPublishedAt)}
             </p>
           ) : null}
+          {hasAffiliateLinks ? (
+            <p className="affiliate-disclosure">{affiliateDisclosureText}</p>
+          ) : null}
           {articleBlocks.map((block, index) => {
             const shouldInsertRelatedReviews =
               relatedReviewsSection && index === firstBodyLinksBlockIndex;
@@ -1636,7 +1657,7 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
                     <a
                       className="inline-link"
                       href={block.href}
-                      rel="noreferrer"
+                      rel={getArticleLinkRel(block.href)}
                       target="_blank"
                     >
                       {block.text}
@@ -1659,7 +1680,7 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
                     <a
                       className="inline-link"
                       href={block.href}
-                      rel="noreferrer"
+                      rel={getArticleLinkRel(block.href)}
                       target="_blank"
                     >
                       {block.text}
@@ -1705,7 +1726,12 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
             <h2 className="section-title">Links</h2>
             <div className="article-link-list">
               {visibleArticleLinks.map((link) => (
-                <a href={link.url} key={link.id} rel="noreferrer" target="_blank">
+                <a
+                  href={link.url}
+                  key={link.id}
+                  rel={getArticleLinkRel(link.url)}
+                  target="_blank"
+                >
                   {getArticleLinkLabel(link.label, link.url)}
                 </a>
               ))}

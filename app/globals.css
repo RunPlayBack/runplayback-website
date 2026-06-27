@@ -593,6 +593,13 @@ button {
   margin-top: 0;
 }
 
+.article-content .affiliate-disclosure {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  margin: 12px 0 18px;
+}
+
 .article-content h2 + p {
   margin-top: 0;
 }

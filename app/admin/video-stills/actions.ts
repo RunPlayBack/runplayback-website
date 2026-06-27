@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
+import {
+  resolveStillFilenameArray,
+  suggestStillFilenames,
+} from "@/lib/still-filename-ai";
 
 function getString(formData: FormData, key: string) {
   return String(formData.get(key) || "").trim();
@@ -70,50 +74,6 @@ function normalizeFilename(value = "") {
   return safeBase ? `${safeBase}${extension}` : "";
 }
 
-function resolveStillFilenameArray({
-  articleSlug,
-  stillCount,
-  aiFilenames = [],
-}: {
-  articleSlug: string;
-  aiFilenames?: string[];
-  stillCount: number;
-}) {
-  const base = slugifyFilePart(articleSlug || "video-still") || "video-still";
-  const merged = Array.from({ length: stillCount }, (_, index) => {
-    const ai = normalizeFilename(aiFilenames[index]);
-    const fallback = `${base}-${String(index + 1).padStart(2, "0")}.jpg`;
-
-    return ai || fallback;
-  });
-
-  const seen = new Set<string>();
-
-  return merged.map((value, index) => {
-    const normalized = normalizeFilename(value);
-    const fallback = `${base}-${String(index + 1).padStart(2, "0")}.jpg`;
-    let candidate = normalized || fallback;
-
-    if (!seen.has(candidate)) {
-      seen.add(candidate);
-      return candidate;
-    }
-
-    const parsed = candidate.match(/^(.+?)(\.[^.]+)$/);
-    const stem = parsed?.[1] || candidate.replace(/\.[^.]+$/, "");
-    const extension = parsed?.[2] || ".jpg";
-    let suffix = 2;
-
-    while (seen.has(`${stem}-${suffix}${extension}`)) {
-      suffix += 1;
-    }
-
-    candidate = `${stem}-${suffix}${extension}`;
-    seen.add(candidate);
-    return candidate;
-  });
-}
-
 function getObjectPathFromPublicUrl(url: string, bucket: string) {
   try {
     const parsed = new URL(url);
@@ -159,10 +119,6 @@ function getSupabaseAdminClient() {
       persistSession: false,
     },
   });
-}
-
-async function loadFilenameHelpers() {
-  return import("../../../../scripts/still-filename-ai.mjs");
 }
 
 function replaceVideoStillUrl(content: string, stillIndex: number, replacementUrl: string) {
@@ -369,7 +325,6 @@ export async function renameArticleVideoStillFilenames(articleId: string) {
   let aiFilenames: string[] = [];
 
   try {
-    const { suggestStillFilenames } = await loadFilenameHelpers();
     const suggestion = await suggestStillFilenames({
       article: {
         content: article.content,
@@ -392,8 +347,7 @@ export async function renameArticleVideoStillFilenames(articleId: string) {
     );
   }
 
-  const filenameHelpers = await loadFilenameHelpers();
-  const resolvedFilenames = filenameHelpers.resolveStillFilenameArray({
+  const resolvedFilenames = resolveStillFilenameArray({
     articleSlug: article.slug,
     stillCount: stills.length,
     aiFilenames,
