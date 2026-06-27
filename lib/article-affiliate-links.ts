@@ -29,6 +29,61 @@ function normalizeWhitespace(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
+function stripTrailingAffiliateNoise(value: string) {
+  return value
+    .replace(/\s*\([^)]*\)\s*$/, "")
+    .replace(/\s+(?:use\s+)?promo\s+code\b.*$/i, "")
+    .trim();
+}
+
+const merchantSuffixes = [
+  "accessories",
+  "batteries",
+  "battery",
+  "bikes",
+  "bike",
+  "controls",
+  "control",
+  "cycles",
+  "cycle",
+  "display",
+  "ebikes",
+  "ebike",
+  "gear",
+  "lithium",
+  "motor",
+  "motors",
+  "parts",
+  "power",
+  "shop",
+  "store",
+  "tech",
+];
+
+function humanizeHostname(url: string) {
+  const host = getHostname(url);
+
+  if (!host) {
+    return "";
+  }
+
+  let root = host.split(".").slice(0, -1).join(" ") || host;
+
+  for (const suffix of merchantSuffixes) {
+    root = root.replace(
+      new RegExp(`([a-z0-9])(${suffix})(?=$|\\s)`, "gi"),
+      "$1 $2",
+    );
+  }
+
+  return normalizeWhitespace(
+    root
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/[-_]+/g, " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase()),
+  );
+}
+
 export function isAffiliateEligibleUrl(url: string) {
   const host = getHostname(url);
 
@@ -53,13 +108,16 @@ export function getAffiliateDisclosureText() {
   return affiliateDisclosureText;
 }
 
-export function getAffiliateLinkCandidates(label: string) {
+export function getAffiliateLinkCandidates(label: string, url = "") {
   const normalized = normalizeWhitespace(
-    label
-      .replaceAll("**", "")
-      .replace(/^["“]|["”]$/g, "")
-      .replace(/[-–—:;|]+$/g, "")
-      .trim(),
+    stripTrailingAffiliateNoise(
+      label
+        .replaceAll("**", "")
+        .replace(/[“"][^”"]+[”"]/g, " ")
+        .replace(/^["“]|["”]$/g, "")
+        .replace(/[-–—:;|]+$/g, "")
+        .trim(),
+    ),
   );
 
   if (!normalized) {
@@ -67,6 +125,7 @@ export function getAffiliateLinkCandidates(label: string) {
   }
 
   const candidates = new Set<string>();
+  const merchantName = humanizeHostname(url);
   const addCandidate = (value: string) => {
     const cleaned = normalizeWhitespace(value);
 
@@ -84,6 +143,9 @@ export function getAffiliateLinkCandidates(label: string) {
   for (const part of parts) {
     const cleanedPart = normalizeWhitespace(
       part
+        .replace(/[“"][^”"]+[”"]/g, " ")
+        .replace(/\s+\b(?:on|for)\s+the\s+[a-z0-9.+\-_ ]+$/i, "")
+        .replace(/\s+\b(?:on|for)\s+[a-z0-9.+\-_ ]+$/i, "")
         .replace(/\b(full\s+)?review\b$/i, "")
         .replace(/\b(video|youtube|article|link|links)\b$/i, "")
         .replace(/\b(the|a|an)\b$/i, "")
@@ -101,6 +163,56 @@ export function getAffiliateLinkCandidates(label: string) {
 
       if (words.length >= 3) {
         addCandidate(words.slice(0, -1).join(" "));
+      }
+
+      const voltageWordIndex = words.findIndex((word) => /^\d+\s*v$/i.test(word) || /^\d+v$/i.test(word));
+      const batteryWordIndex = words.findIndex((word) => /^batter(?:y|ies)$/i.test(word));
+
+      if (voltageWordIndex >= 0 && batteryWordIndex > voltageWordIndex) {
+        const voltageBatteryPhrase = words
+          .slice(voltageWordIndex, batteryWordIndex + 1)
+          .join(" ");
+
+        addCandidate(voltageBatteryPhrase);
+
+        if (merchantName) {
+          addCandidate(`${merchantName} ${voltageBatteryPhrase}`);
+          addCandidate(`${voltageBatteryPhrase} from ${merchantName}`);
+        }
+      }
+    }
+  }
+
+  if (merchantName) {
+    const currentCandidates = Array.from(candidates);
+    const merchantWords = merchantName.split(/\s+/).filter(Boolean);
+    const merchantFirstWord = merchantWords[0]?.toLowerCase() || "";
+
+    for (const candidate of currentCandidates) {
+      if (
+        !candidate ||
+        candidate.toLowerCase().includes(merchantName.toLowerCase())
+      ) {
+        continue;
+      }
+
+      addCandidate(`${candidate} from ${merchantName}`);
+      addCandidate(`${candidate} at ${merchantName}`);
+
+      const candidateWords = candidate.split(/\s+/).filter(Boolean);
+
+      if (
+        merchantFirstWord &&
+        candidateWords.length >= 2 &&
+        candidateWords[0]?.toLowerCase() === merchantFirstWord
+      ) {
+        const withoutMerchant = candidateWords.slice(1).join(" ");
+
+        if (withoutMerchant) {
+          addCandidate(withoutMerchant);
+          addCandidate(`${withoutMerchant} from ${merchantName}`);
+          addCandidate(`${withoutMerchant} at ${merchantName}`);
+        }
       }
     }
   }
@@ -128,14 +240,22 @@ function linkifyPlainTextSegment(
   links: Array<{ label: string; url: string }>,
   usedUrls: Set<string>,
 ) {
-  let output = segment;
+  let bestMatch:
+    | {
+        fullMatch: string;
+        index: number;
+        link: { label: string; url: string };
+        matchedText: string;
+        prefix: string;
+      }
+    | undefined;
 
   for (const link of links) {
     if (usedUrls.has(link.url)) {
       continue;
     }
 
-    const candidates = getAffiliateLinkCandidates(link.label);
+    const candidates = getAffiliateLinkCandidates(link.label, link.url);
 
     for (const candidate of candidates) {
       const pattern = buildCandidatePattern(candidate);
@@ -144,26 +264,44 @@ function linkifyPlainTextSegment(
         continue;
       }
 
-      const match = output.match(pattern);
+      const match = segment.match(pattern);
 
       if (!match || match.index === undefined) {
         continue;
       }
 
       const [fullMatch, prefix = "", matchedText = ""] = match;
-      const replacement = `${prefix}[${matchedText}](${link.url})`;
-      const matchedIndex = match.index;
 
-      output =
-        output.slice(0, matchedIndex) +
-        replacement +
-        output.slice(matchedIndex + fullMatch.length);
-      usedUrls.add(link.url);
-      break;
+      if (
+        !bestMatch ||
+        matchedText.length > bestMatch.matchedText.length ||
+        (matchedText.length === bestMatch.matchedText.length &&
+          match.index < bestMatch.index)
+      ) {
+        bestMatch = {
+          fullMatch,
+          index: match.index,
+          link,
+          matchedText,
+          prefix,
+        };
+      }
     }
   }
 
-  return output;
+  if (!bestMatch) {
+    return segment;
+  }
+
+  const replacement = `${bestMatch.prefix}[${bestMatch.matchedText}](${bestMatch.link.url})`;
+
+  usedUrls.add(bestMatch.link.url);
+
+  return (
+    segment.slice(0, bestMatch.index) +
+    replacement +
+    segment.slice(bestMatch.index + bestMatch.fullMatch.length)
+  );
 }
 
 function buildFallbackAffiliateLine(

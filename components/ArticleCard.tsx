@@ -28,17 +28,30 @@ export function ArticleCard({ article, showCategory = true }: ArticleCardProps) 
         <Link
           aria-label={`Read ${article.title}`}
           href={`/articles/${article.slug}`}
+          rel="noopener noreferrer"
+          target="_blank"
         >
           <img src={article.featuredImageUrl} alt="" />
         </Link>
       ) : null}
       {showCategory ? (
-        <Link className="category-link" href={`/articles/categories/${category.slug}`}>
+        <Link
+          className="category-link"
+          href={`/articles/categories/${category.slug}`}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
           {category.label}
         </Link>
       ) : null}
       <h3>
-        <Link href={`/articles/${article.slug}`}>{article.title}</Link>
+        <Link
+          href={`/articles/${article.slug}`}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          {article.title}
+        </Link>
       </h3>
       {article.displayPublishedAt ? (
         <p className="article-date">{formatArticleDate(article.displayPublishedAt)}</p>

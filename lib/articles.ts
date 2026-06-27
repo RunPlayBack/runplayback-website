@@ -6,6 +6,11 @@ export type PublicArticleVideo = {
   youtubeVideoId: string;
   videoUrl: string;
   title: string;
+  affiliateLinks?: Array<{
+    id?: string;
+    label: string;
+    url: string;
+  }>;
 };
 
 export type PublicArticleSource = {
@@ -59,12 +64,22 @@ type SupabaseArticleRow = {
         youtube_video_id: string;
         video_url: string;
         title: string;
+        affiliate_links?: Array<{
+          id: string;
+          label: string;
+          url: string;
+        }> | null;
       }
     | Array<{
         published_at: string | null;
         youtube_video_id: string;
         video_url: string;
         title: string;
+        affiliate_links?: Array<{
+          id: string;
+          label: string;
+          url: string;
+        }> | null;
       }>
     | null;
   affiliate_links: Array<{
@@ -91,15 +106,61 @@ type SourceArticleVideoRow = {
         youtube_video_id: string;
         video_url: string;
         title: string;
+        affiliate_links?: Array<{
+          id: string;
+          label: string;
+          url: string;
+        }> | null;
       }
     | Array<{
         published_at: string | null;
         youtube_video_id: string;
         video_url: string;
         title: string;
+        affiliate_links?: Array<{
+          id: string;
+          label: string;
+          url: string;
+        }> | null;
       }>
     | null;
 };
+
+function mergeUniqueLinks(
+  ...linkGroups: Array<
+    Array<{
+      id?: string;
+      label: string;
+      url: string;
+    }> | null | undefined
+  >
+) {
+  const seen = new Set<string>();
+  const merged: Array<{
+    id: string;
+    label: string;
+    url: string;
+  }> = [];
+
+  for (const group of linkGroups) {
+    for (const link of group || []) {
+      const key = link.url.trim().toLowerCase();
+
+      if (!key || seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      merged.push({
+        id: link.id || key,
+        label: link.label,
+        url: link.url,
+      });
+    }
+  }
+
+  return merged;
+}
 
 function getYouTubeVideoIdFromText(value: string) {
   const patterns = [
@@ -154,6 +215,10 @@ function mapSupabaseArticle(row: SupabaseArticleRow): PublicArticle {
     });
   }
 
+  const videoAffiliateLinks = videoRows.flatMap(
+    (videoRow) => videoRow.affiliate_links || [],
+  );
+
   return {
     id: row.id,
     title: row.title,
@@ -176,7 +241,7 @@ function mapSupabaseArticle(row: SupabaseArticleRow): PublicArticle {
     sourceArticles: [],
     video: videos[0] || null,
     videos,
-    links: row.affiliate_links || [],
+    links: mergeUniqueLinks(row.affiliate_links, videoAffiliateLinks),
   };
 }
 
@@ -303,7 +368,7 @@ export async function getPublishedArticles() {
   const { data, error } = await supabase
     .from("articles")
     .select(
-      "id,title,slug,seo_title,seo_description,featured_image_url,author_name,category_slug,content,article_type,status,published_at,videos(published_at,youtube_video_id,video_url,title),affiliate_links(id,label,url)",
+      "id,title,slug,seo_title,seo_description,featured_image_url,author_name,category_slug,content,article_type,status,published_at,videos(published_at,youtube_video_id,video_url,title,affiliate_links(id,label,url)),affiliate_links(id,label,url)",
     )
     .eq("status", "published")
     .order("published_at", { ascending: false, nullsFirst: false });
@@ -328,7 +393,7 @@ export async function getPublishedArticleBySlug(slug: string) {
   const { data, error } = await supabase
     .from("articles")
     .select(
-      "id,title,slug,seo_title,seo_description,featured_image_url,author_name,category_slug,content,article_type,status,published_at,videos(published_at,youtube_video_id,video_url,title),affiliate_links(id,label,url)",
+      "id,title,slug,seo_title,seo_description,featured_image_url,author_name,category_slug,content,article_type,status,published_at,videos(published_at,youtube_video_id,video_url,title,affiliate_links(id,label,url)),affiliate_links(id,label,url)",
     )
     .eq("status", "published")
     .eq("slug", slug)

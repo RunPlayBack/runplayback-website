@@ -126,6 +126,8 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
               aria-current={item.slug === category.slug ? "page" : undefined}
               href={`/articles/categories/${item.slug}`}
               key={item.slug}
+              rel="noopener noreferrer"
+              target="_blank"
             >
               {item.label}
             </Link>
@@ -135,7 +137,12 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
           <p className="eyebrow">Category</p>
           <h1>{category.label}</h1>
           <p>{category.description}</p>
-          <Link className="button secondary-button" href="/articles">
+          <Link
+            className="button secondary-button"
+            href="/articles"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
             All Reviews
           </Link>
         </section>

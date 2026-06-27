@@ -139,7 +139,12 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
           </div>
           <nav className="reviews-topic-links">
             {articleCategories.map((category) => (
-              <Link href={`/articles/categories/${category.slug}`} key={category.slug}>
+              <Link
+                href={`/articles/categories/${category.slug}`}
+                key={category.slug}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
                 {category.label}
                 <span aria-hidden="true">→</span>
               </Link>
@@ -152,6 +157,8 @@ export default async function ArticlesPage({ searchParams }: ArticlesPageProps) 
               className="featured-article-card"
               href={`/articles/${featuredArticle.slug}`}
               aria-label={`Read ${featuredArticle.title}`}
+              rel="noopener noreferrer"
+              target="_blank"
             >
               {featuredArticleSourceImages.length >= 2 ? (
                 <div className="featured-versus-images" aria-label="Compared product images">
