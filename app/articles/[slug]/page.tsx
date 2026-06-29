@@ -1694,12 +1694,7 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
       <h2>Related Reviews</h2>
       <div className="article-related-links">
         {relatedArticles.map((relatedArticle) => (
-          <Link
-            href={`/articles/${relatedArticle.slug}`}
-            key={relatedArticle.id}
-            rel="noopener noreferrer"
-            target="_blank"
-          >
+          <Link href={`/articles/${relatedArticle.slug}`} key={relatedArticle.id}>
             {relatedArticle.title}
           </Link>
         ))}
@@ -1831,8 +1826,6 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
         <Link
           className="article-kicker-category"
           href={`/articles/categories/${articleCategory.slug}`}
-          target="_blank"
-          rel="noopener noreferrer"
         >
           {articleCategory.label}
         </Link>
