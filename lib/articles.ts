@@ -1,5 +1,7 @@
 import { articles as placeholderArticles } from "@/lib/placeholder-data";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { isAffiliateEligibleUrl } from "@/lib/article-affiliate-links";
 
 export type PublicArticleVideo = {
   publishedAt: string | null;
@@ -100,6 +102,11 @@ type SourceArticleVideoRow = {
   title: string;
   slug: string;
   featured_image_url: string | null;
+  affiliate_links?: Array<{
+    id: string;
+    label: string;
+    url: string;
+  }> | null;
   videos:
     | {
         published_at: string | null;
@@ -162,6 +169,153 @@ function mergeUniqueLinks(
   return merged;
 }
 
+function isPublicArticleLinkNoise(link: { label: string; url: string }) {
+  const normalizedLabel = link.label.trim().toLowerCase();
+  const normalizedUrl = link.url.trim().toLowerCase();
+  const isVideoStillLink =
+    normalizedLabel.includes("video still") ||
+    normalizedUrl.includes("/article-stills/") ||
+    normalizedUrl.includes("/storage/v1/object/public/article-stills/");
+
+  const isRunPlayBackArticleLink =
+    normalizedUrl.includes("runplayback.com/articles") ||
+    normalizedUrl.includes("/articles/");
+  const isRunPlayBackContactLink =
+    normalizedUrl.includes("runplayback.com/contact") ||
+    normalizedUrl === "http://runplayback.com" ||
+    normalizedUrl === "https://runplayback.com" ||
+    normalizedLabel === "contact" ||
+    normalizedLabel === "email me" ||
+    normalizedLabel === "articles";
+  const isSocialOrChannelLink =
+    normalizedLabel === "instagram" ||
+    normalizedLabel === "facebook" ||
+    normalizedLabel === "twitter" ||
+    normalizedLabel === "x" ||
+    normalizedLabel === "threads" ||
+    normalizedLabel === "youtube" ||
+    normalizedUrl.includes("instagram.com/runplayback") ||
+    normalizedUrl.includes("facebook.com/runplayback") ||
+    normalizedUrl.includes("twitter.com/runplayback") ||
+    normalizedUrl.includes("x.com/runplayback") ||
+    normalizedUrl.includes("youtube.com/@") ||
+    normalizedUrl.includes("youtube.com/channel/") ||
+    normalizedUrl.includes("youtu.be/");
+  const isRunPlayBackStorefrontLink =
+    normalizedLabel === "amazon.com" ||
+    normalizedUrl.includes("amazon.com/shop/runplayback");
+  const isVideoPartLink =
+    /^part\s+\d+\b/.test(normalizedLabel) ||
+    normalizedLabel.startsWith("full review") ||
+    normalizedLabel.startsWith("watch on youtube");
+
+  return (
+    !isAffiliateEligibleUrl(link.url) ||
+    isVideoStillLink ||
+    isRunPlayBackArticleLink ||
+    isRunPlayBackContactLink ||
+    isSocialOrChannelLink ||
+    isRunPlayBackStorefrontLink ||
+    isVideoPartLink
+  );
+}
+
+function filterPublicArticleLinks(
+  ...linkGroups: Array<
+    Array<{
+      id?: string;
+      label: string;
+      url: string;
+    }> | null | undefined
+  >
+) {
+  return mergeUniqueLinks(
+    ...linkGroups.map((group) =>
+      (group || []).filter(
+        (link) => link.url.trim() && !isPublicArticleLinkNoise(link),
+      ),
+    ),
+  );
+}
+
+function extractLinksFromContent(content: string) {
+  if (!content.trim()) {
+    return [] as Array<{
+      id: string;
+      label: string;
+      url: string;
+    }>;
+  }
+
+  const markdownLinks = Array.from(
+    content.matchAll(/(?<!!)\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g),
+  ).map((match) => ({
+    id: `${match[2].trim().toLowerCase()}-${match[1].trim().toLowerCase()}`,
+    label: match[1].trim(),
+    url: match[2].trim(),
+  }));
+
+  const lines = content.split("\n");
+  const extractedLines: Array<{
+    id: string;
+    label: string;
+    url: string;
+  }> = [];
+  let inLinksSection = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+
+    if (!line) {
+      continue;
+    }
+
+    if (/^#{1,6}\s+links$/i.test(line)) {
+      inLinksSection = true;
+      continue;
+    }
+
+    if (!inLinksSection) {
+      continue;
+    }
+
+    if (/^#{1,6}\s+/.test(line)) {
+      break;
+    }
+
+    const strippedLine = line.replace(/^[-*•]\s+/, "").trim();
+    const labeledUrlMatch = strippedLine.match(
+      /^(.+?)\s*[:;|–—-]\s*(https?:\/\/\S+)$/i,
+    );
+
+    if (!labeledUrlMatch) {
+      continue;
+    }
+
+    const label = labeledUrlMatch[1]
+      .replace(/^["“]|["”]$/g, "")
+      .replaceAll("**", "")
+      .trim();
+    const url = labeledUrlMatch[2].replace(/[.,;!?]+$/, "").trim();
+
+    if (!label || !url) {
+      continue;
+    }
+
+    if (isPublicArticleLinkNoise({ label, url })) {
+      continue;
+    }
+
+    extractedLines.push({
+      id: `${url.toLowerCase()}-${label.toLowerCase()}`,
+      label,
+      url,
+    });
+  }
+
+  return filterPublicArticleLinks(markdownLinks, extractedLines);
+}
+
 function getYouTubeVideoIdFromText(value: string) {
   const patterns = [
     /youtu\.be\/([A-Za-z0-9_-]{11})/,
@@ -196,6 +350,7 @@ function mapSupabaseArticle(row: SupabaseArticleRow): PublicArticle {
     );
   const videos = videoRows
     .map((videoRow) => ({
+      affiliateLinks: videoRow.affiliate_links || [],
       publishedAt: videoRow.published_at || null,
       youtubeVideoId: videoRow.youtube_video_id,
       videoUrl: videoRow.video_url || `https://youtu.be/${videoRow.youtube_video_id}`,
@@ -208,6 +363,7 @@ function mapSupabaseArticle(row: SupabaseArticleRow): PublicArticle {
     !videos.some((videoRow) => videoRow.youtubeVideoId === fallbackYouTubeVideoId)
   ) {
     videos.push({
+      affiliateLinks: video?.affiliate_links || [],
       publishedAt: video?.published_at || null,
       youtubeVideoId: fallbackYouTubeVideoId,
       videoUrl: video?.video_url || `https://youtu.be/${fallbackYouTubeVideoId}`,
@@ -218,7 +374,9 @@ function mapSupabaseArticle(row: SupabaseArticleRow): PublicArticle {
   const videoAffiliateLinks = videoRows.flatMap(
     (videoRow) => videoRow.affiliate_links || [],
   );
-
+  const mergedLinks = videoAffiliateLinks.length
+    ? filterPublicArticleLinks(videoAffiliateLinks)
+    : filterPublicArticleLinks(row.affiliate_links);
   return {
     id: row.id,
     title: row.title,
@@ -241,7 +399,7 @@ function mapSupabaseArticle(row: SupabaseArticleRow): PublicArticle {
     sourceArticles: [],
     video: videos[0] || null,
     videos,
-    links: mergeUniqueLinks(row.affiliate_links, videoAffiliateLinks),
+    links: mergedLinks,
   };
 }
 
@@ -296,18 +454,18 @@ async function getSourceArticleDetails(
     .order("sort_order", { ascending: true });
 
   if (sourceError || !sourceRows?.length) {
-    return { sourceArticles: [], videos: [] };
+    return { sourceArticles: [], videos: [], links: [] };
   }
 
   const orderedSourceRows = sourceRows as unknown as ArticleSourceRow[];
   const sourceIds = orderedSourceRows.map((row) => row.source_article_id);
   const { data: sourceArticles, error: articleError } = await supabase
     .from("articles")
-    .select("id,title,slug,featured_image_url,content,videos(published_at,youtube_video_id,video_url,title)")
+    .select("id,title,slug,featured_image_url,content,affiliate_links(id,label,url),videos(published_at,youtube_video_id,video_url,title,affiliate_links(id,label,url))")
     .in("id", sourceIds);
 
   if (articleError || !sourceArticles?.length) {
-    return { sourceArticles: [], videos: [] };
+    return { sourceArticles: [], videos: [], links: [] };
   }
 
   const articleById = new Map(
@@ -351,15 +509,22 @@ async function getSourceArticleDetails(
         youtubeVideoId: videoRow.youtube_video_id,
         videoUrl: videoRow.video_url || `https://youtu.be/${videoRow.youtube_video_id}`,
         title: videoRow.title || sourceArticle?.title || "RunPlayBack review video",
+        affiliateLinks: filterPublicArticleLinks(videoRow.affiliate_links || []),
       });
     }
   }
 
-  return { sourceArticles: orderedSourceArticles, videos };
+  return {
+    sourceArticles: orderedSourceArticles,
+    videos,
+    links: filterPublicArticleLinks(
+      videos.flatMap((video) => video.affiliateLinks || []),
+    ),
+  };
 }
 
 export async function getPublishedArticles() {
-  const supabase = await createClient();
+  const supabase = createAdminClient() || (await createClient());
 
   if (!supabase) {
     return mapPlaceholderArticles();
@@ -384,7 +549,7 @@ export async function getPublishedArticles() {
 }
 
 export async function getPublishedArticleBySlug(slug: string) {
-  const supabase = await createClient();
+  const supabase = createAdminClient() || (await createClient());
 
   if (!supabase) {
     return mapPlaceholderArticles().find((article) => article.slug === slug) || null;
@@ -406,7 +571,11 @@ export async function getPublishedArticleBySlug(slug: string) {
   const article = mapSupabaseArticle(data as unknown as SupabaseArticleRow);
   const sourceDetails = await getSourceArticleDetails(supabase, article.id);
 
-  if (!sourceDetails.sourceArticles.length && !sourceDetails.videos.length) {
+  if (
+    !sourceDetails.sourceArticles.length &&
+    !sourceDetails.videos.length &&
+    !sourceDetails.links.length
+  ) {
     return article;
   }
 
@@ -420,6 +589,9 @@ export async function getPublishedArticleBySlug(slug: string) {
 
   return {
     ...article,
+    links: sourceDetails.links.length
+      ? filterPublicArticleLinks(sourceDetails.links)
+      : filterPublicArticleLinks(article.links),
     sourceArticles: sourceDetails.sourceArticles,
     video: videos[0] || null,
     videos,

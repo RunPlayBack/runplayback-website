@@ -17,7 +17,9 @@
     "import:video-stills:ai": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node scripts/import-video-stills.mjs --ai-filenames",
     "process:video-stills": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node scripts/import-video-stills.mjs --process-queue",
     "rename:article-stills": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node scripts/rename-article-still-filenames.mjs",
-    "rename:article-stills:ai": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node scripts/rename-article-still-filenames.mjs --ai-filenames"
+    "rename:article-stills:ai": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node scripts/rename-article-still-filenames.mjs --ai-filenames",
+    "backfill:affiliate-inline-links": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node --experimental-strip-types scripts/backfill-article-inline-affiliate-links.mjs",
+    "audit:affiliate-inline-links": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node --experimental-strip-types scripts/audit-affiliate-inline-links.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

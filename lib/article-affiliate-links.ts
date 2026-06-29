@@ -1,5 +1,5 @@
 export const affiliateDisclosureText =
-  "Some links in this article may be affiliate links. If you buy through them, RunPlayBack may earn a small commission at no extra cost to you.";
+  "Some links in this article may be affiliate links. If you buy through them, we may earn a small commission at no extra cost to you.";
 
 const excludedHosts = new Set([
   "facebook.com",
@@ -21,12 +21,28 @@ function getHostname(url: string) {
   }
 }
 
+function uniqueWords(words: string[]) {
+  return Array.from(new Set(words.filter(Boolean)));
+}
+
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function normalizeWhitespace(value: string) {
   return value.replace(/\s+/g, " ").trim();
+}
+
+function getUrlPathWords(url: string) {
+  try {
+    return decodeURIComponent(new URL(url).pathname)
+      .replace(/[-_/]+/g, " ")
+      .split(/\s+/)
+      .map((word) => word.trim())
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
 }
 
 function stripTrailingAffiliateNoise(value: string) {
@@ -126,6 +142,7 @@ export function getAffiliateLinkCandidates(label: string, url = "") {
 
   const candidates = new Set<string>();
   const merchantName = humanizeHostname(url);
+  const merchantWords = merchantName.split(/\s+/).filter(Boolean);
   const addCandidate = (value: string) => {
     const cleaned = normalizeWhitespace(value);
 
@@ -156,6 +173,12 @@ export function getAffiliateLinkCandidates(label: string, url = "") {
       addCandidate(cleanedPart);
 
       const words = cleanedPart.split(/\s+/).filter(Boolean);
+      const lowerWords = words.map((word) => word.toLowerCase());
+      const pivotIndex = lowerWords.findIndex((word) =>
+        ["from", "at", "on", "for", "with"].includes(word),
+      );
+      const prefixWords = (pivotIndex >= 0 ? words.slice(0, pivotIndex) : words).filter(Boolean);
+      const lowerPrefixWords = prefixWords.map((word) => word.toLowerCase());
 
       if (words.length >= 2) {
         addCandidate(words.slice(1).join(" "));
@@ -163,6 +186,91 @@ export function getAffiliateLinkCandidates(label: string, url = "") {
 
       if (words.length >= 3) {
         addCandidate(words.slice(0, -1).join(" "));
+      }
+
+      if (prefixWords.length && prefixWords.join(" ") !== cleanedPart) {
+        addCandidate(prefixWords.join(" "));
+      }
+
+      const hasHub = lowerWords.includes("hub");
+      const hasMotor = lowerWords.includes("motor");
+      const hasController = lowerWords.includes("controller");
+      const hasBattery = lowerWords.includes("battery");
+      const productType =
+        hasHub && hasMotor
+          ? "hub motor"
+          : hasController
+            ? "controller"
+            : hasBattery
+              ? "battery"
+              : "";
+      const modelWord =
+        prefixWords.find((word) => /[0-9]/.test(word)) ||
+        words.find((word) => /[0-9]/.test(word)) ||
+        "";
+      const brandPhrase = prefixWords.filter((word) => !/[0-9]/.test(word)).slice(0, 2).join(" ");
+      const brandWords = prefixWords.filter((word) => !/[0-9]/.test(word));
+      const merchantFirstWord = merchantWords[0]?.toLowerCase() || "";
+      const brandWithoutMerchant = normalizeWhitespace(
+        brandWords
+          .filter((word, wordIndex) => {
+            if (!merchantFirstWord) {
+              return true;
+            }
+
+            return !(
+              wordIndex === 0 &&
+              word.toLowerCase() === merchantFirstWord
+            );
+          })
+          .join(" "),
+      );
+
+      if (productType) {
+        if (modelWord) {
+          addCandidate(`${modelWord} ${productType}`);
+        }
+
+        if (brandPhrase) {
+          addCandidate(`${brandPhrase} ${productType}`);
+        }
+
+        if (brandWithoutMerchant) {
+          addCandidate(`${brandWithoutMerchant} ${productType}`);
+        }
+
+        if (
+          merchantName &&
+          brandPhrase &&
+          brandPhrase
+            .toLowerCase()
+            .startsWith(merchantWords[0]?.toLowerCase() ?? "")
+        ) {
+          const brandWithoutMerchant = normalizeWhitespace(
+            brandPhrase.replace(
+              new RegExp(`^${escapeRegExp(merchantWords[0] ?? "")}\\s+`, "i"),
+              "",
+            ),
+          );
+
+          if (brandWithoutMerchant) {
+            addCandidate(`${merchantName} ${brandWithoutMerchant} ${productType}`);
+          }
+        }
+
+        if (merchantName && modelWord) {
+          addCandidate(`${merchantName} ${modelWord} ${productType}`);
+        }
+
+        if (merchantName && brandPhrase) {
+          addCandidate(`${merchantName} ${brandPhrase} ${productType}`);
+        }
+
+        if (merchantName && brandWithoutMerchant) {
+          addCandidate(`${merchantName} ${brandWithoutMerchant} ${productType}`);
+          addCandidate(`${brandWithoutMerchant} from ${merchantName}`);
+          addCandidate(`${brandWithoutMerchant} at ${merchantName}`);
+        }
       }
 
       const voltageWordIndex = words.findIndex((word) => /^\d+\s*v$/i.test(word) || /^\d+v$/i.test(word));
@@ -183,9 +291,98 @@ export function getAffiliateLinkCandidates(label: string, url = "") {
     }
   }
 
+  const urlPathWords = getUrlPathWords(url).map((word) => word.toLowerCase());
+  const hasUrlController = urlPathWords.includes("controller");
+  const hasUrlBattery = urlPathWords.includes("battery");
+  const hasUrlHub = urlPathWords.includes("hub");
+  const hasUrlMotor = urlPathWords.includes("motor");
+  const urlProductType =
+    hasUrlHub && hasUrlMotor
+      ? "hub motor"
+      : hasUrlController
+        ? "controller"
+        : hasUrlBattery
+          ? "battery"
+          : "";
+
+  if (urlProductType) {
+    const normalizedWords = normalized.split(/\s+/).filter(Boolean);
+    const pivotIndex = normalizedWords.findIndex((word) =>
+      ["from", "at", "on", "for", "with"].includes(word.toLowerCase()),
+    );
+    const prefixWords =
+      pivotIndex >= 0 ? normalizedWords.slice(0, pivotIndex) : normalizedWords;
+    const modelWord =
+      prefixWords.find((word) => /[0-9]/.test(word)) ||
+      normalizedWords.find((word) => /[0-9]/.test(word)) ||
+      "";
+    const brandPhrase = prefixWords.filter((word) => !/[0-9]/.test(word)).slice(0, 2).join(" ");
+    const merchantFirstWord = merchantWords[0]?.toLowerCase() || "";
+    const brandWithoutMerchant = normalizeWhitespace(
+      prefixWords
+        .filter((word, wordIndex) => {
+          if (!merchantFirstWord) {
+            return !/[0-9]/.test(word);
+          }
+
+          return !(
+            !/[0-9]/.test(word) &&
+            wordIndex === 0 &&
+            word.toLowerCase() === merchantFirstWord
+          );
+        })
+        .filter((word) => !/[0-9]/.test(word))
+        .join(" "),
+    );
+
+    if (modelWord) {
+      addCandidate(`${modelWord} ${urlProductType}`);
+    }
+
+    if (brandPhrase) {
+      addCandidate(`${brandPhrase} ${urlProductType}`);
+    }
+
+    if (brandWithoutMerchant) {
+      addCandidate(`${brandWithoutMerchant} ${urlProductType}`);
+    }
+
+    if (merchantName && modelWord) {
+      addCandidate(`${merchantName} ${modelWord} ${urlProductType}`);
+    }
+
+    if (merchantName && brandPhrase) {
+      addCandidate(`${merchantName} ${brandPhrase} ${urlProductType}`);
+    }
+
+    if (merchantName && brandWithoutMerchant) {
+      addCandidate(`${merchantName} ${brandWithoutMerchant} ${urlProductType}`);
+      addCandidate(`${brandWithoutMerchant} from ${merchantName}`);
+      addCandidate(`${brandWithoutMerchant} at ${merchantName}`);
+    }
+
+    if (
+      merchantName &&
+      brandPhrase &&
+      brandPhrase
+        .toLowerCase()
+        .startsWith(merchantWords[0]?.toLowerCase() ?? "")
+    ) {
+      const brandWithoutMerchant = normalizeWhitespace(
+        brandPhrase.replace(
+          new RegExp(`^${escapeRegExp(merchantWords[0] ?? "")}\\s+`, "i"),
+          "",
+        ),
+      );
+
+      if (brandWithoutMerchant) {
+        addCandidate(`${merchantName} ${brandWithoutMerchant} ${urlProductType}`);
+      }
+    }
+  }
+
   if (merchantName) {
     const currentCandidates = Array.from(candidates);
-    const merchantWords = merchantName.split(/\s+/).filter(Boolean);
     const merchantFirstWord = merchantWords[0]?.toLowerCase() || "";
 
     for (const candidate of currentCandidates) {
@@ -235,11 +432,124 @@ function buildCandidatePattern(candidate: string) {
   return new RegExp(`(^|[^\\w])(${pattern})(?=$|[^\\w])`, "i");
 }
 
+function scoreAffiliateMatch(
+  candidate: string,
+  matchedText: string,
+  link: { label: string; url: string },
+) {
+  const normalizedCandidate = candidate.toLowerCase();
+  const normalizedMatch = matchedText.toLowerCase();
+  const normalizedLabel = link.label.toLowerCase();
+  const urlPathWords = getUrlPathWords(link.url).map((word) => word.toLowerCase());
+  const labelWords = normalizedLabel.split(/[^a-z0-9]+/).filter(Boolean);
+  const candidateWords = normalizedCandidate.split(/[^a-z0-9]+/).filter(Boolean);
+  let score = 0;
+
+  if (normalizedLabel.includes(normalizedCandidate)) {
+    score += 8;
+  }
+
+  if (normalizedLabel.includes(normalizedMatch)) {
+    score += 5;
+  }
+
+  if (normalizedCandidate.includes("controller")) {
+    if (normalizedLabel.includes("controller")) {
+      score += 12;
+    }
+
+    if (urlPathWords.includes("controller")) {
+      score += 6;
+    }
+
+    if (
+      normalizedLabel.includes("dongle") ||
+      normalizedLabel.includes("module") ||
+      normalizedLabel.includes("harness") ||
+      normalizedLabel.includes("wire kit") ||
+      normalizedLabel.includes("pre wire") ||
+      normalizedLabel.includes("ignition") ||
+      normalizedLabel.includes("voltmeter")
+    ) {
+      score -= 28;
+    }
+  }
+
+  if (normalizedCandidate.includes("battery")) {
+    if (normalizedLabel.includes("battery")) {
+      score += 12;
+    }
+
+    if (urlPathWords.includes("battery")) {
+      score += 6;
+    }
+  }
+
+  if (normalizedCandidate.includes("hub motor")) {
+    if (normalizedLabel.includes("hub motor")) {
+      score += 12;
+    }
+
+    if (urlPathWords.includes("hub") && urlPathWords.includes("motor")) {
+      score += 6;
+    }
+  }
+
+  const priorityTerms = candidateWords.filter(
+    (word) =>
+      word.length >= 3 &&
+      ![
+        "the",
+        "and",
+        "with",
+        "from",
+        "for",
+        "hub",
+        "motor",
+        "battery",
+        "controller",
+      ].includes(word),
+  );
+
+  for (const term of priorityTerms) {
+    if (labelWords.includes(term)) {
+      score += /\d/.test(term) ? 12 : 6;
+    }
+
+    if (urlPathWords.includes(term)) {
+      score += /\d/.test(term) ? 8 : 4;
+    }
+  }
+
+  if (
+    normalizedCandidate.includes("fardriver") &&
+    normalizedLabel.includes("fardriver")
+  ) {
+    score += 20;
+  }
+
+  if (
+    normalizedCandidate.includes("qs205") &&
+    normalizedLabel.includes("qs205")
+  ) {
+    score += 24;
+  }
+
+  if (
+    normalizedCandidate.includes("powerful lithium") &&
+    normalizedLabel.includes("powerful lithium")
+  ) {
+    score += 24;
+  }
+
+  return score;
+}
+
 function linkifyPlainTextSegment(
   segment: string,
   links: Array<{ label: string; url: string }>,
   usedUrls: Set<string>,
-) {
+): string {
   let bestMatch:
     | {
         fullMatch: string;
@@ -247,6 +557,7 @@ function linkifyPlainTextSegment(
         link: { label: string; url: string };
         matchedText: string;
         prefix: string;
+        score: number;
       }
     | undefined;
 
@@ -271,11 +582,15 @@ function linkifyPlainTextSegment(
       }
 
       const [fullMatch, prefix = "", matchedText = ""] = match;
+      const score = scoreAffiliateMatch(candidate, matchedText, link);
 
       if (
         !bestMatch ||
         matchedText.length > bestMatch.matchedText.length ||
         (matchedText.length === bestMatch.matchedText.length &&
+          score > bestMatch.score) ||
+        (matchedText.length === bestMatch.matchedText.length &&
+          score === bestMatch.score &&
           match.index < bestMatch.index)
       ) {
         bestMatch = {
@@ -284,6 +599,7 @@ function linkifyPlainTextSegment(
           link,
           matchedText,
           prefix,
+          score,
         };
       }
     }
@@ -294,13 +610,15 @@ function linkifyPlainTextSegment(
   }
 
   const replacement = `${bestMatch.prefix}[${bestMatch.matchedText}](${bestMatch.link.url})`;
+  const before = segment.slice(0, bestMatch.index);
+  const after = segment.slice(bestMatch.index + bestMatch.fullMatch.length);
 
   usedUrls.add(bestMatch.link.url);
 
   return (
-    segment.slice(0, bestMatch.index) +
+    linkifyPlainTextSegment(before, links, usedUrls) +
     replacement +
-    segment.slice(bestMatch.index + bestMatch.fullMatch.length)
+    linkifyPlainTextSegment(after, links, usedUrls)
   );
 }
 
@@ -375,6 +693,9 @@ export function injectAffiliateLinksIntoContent(
   const output: string[] = [];
   let inLinksSection = false;
   let insertedInlineAffiliateLink = false;
+  const alreadyHasReadMoreLine = lines.some((line) =>
+    /^read more:\s+/i.test(line.trim()),
+  );
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -399,7 +720,7 @@ export function injectAffiliateLinksIntoContent(
     output.push(linkedLine);
   }
 
-  if (!insertedInlineAffiliateLink) {
+  if (!insertedInlineAffiliateLink && !alreadyHasReadMoreLine) {
     const fallbackLine = buildFallbackAffiliateLine(affiliateLinks, usedUrls);
 
     if (fallbackLine) {
@@ -425,4 +746,17 @@ export function injectAffiliateLinksIntoContent(
   }
 
   return output.join("\n");
+}
+
+export function injectAffiliateLinksIntoLine(
+  text: string,
+  links: Array<{ label: string; url: string }>,
+) {
+  const affiliateLinks = links.filter((link) => isAffiliateEligibleUrl(link.url));
+
+  if (!text || !affiliateLinks.length) {
+    return text;
+  }
+
+  return linkifyLine(text, affiliateLinks, new Set<string>());
 }

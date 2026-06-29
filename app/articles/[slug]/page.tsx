@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { getArticleCategory } from "@/lib/article-categories";
 import {
   affiliateDisclosureText,
-  injectAffiliateLinksIntoContent,
+  injectAffiliateLinksIntoLine,
   isAffiliateEligibleUrl,
 } from "@/lib/article-affiliate-links";
 import {
@@ -239,10 +239,203 @@ function getArticleLinkLabel(label: string, url: string) {
   return cleanLabel;
 }
 
+function isDisplayArticleLinkNoise(link: { label: string; url: string }) {
+  const normalizedLabel = link.label.trim().toLowerCase();
+  const normalizedUrl = link.url.trim().toLowerCase();
+
+  const isRunPlayBackArticleLink =
+    normalizedUrl.includes("runplayback.com/articles") ||
+    normalizedUrl.includes("/articles/");
+  const isRunPlayBackContactLink =
+    normalizedUrl.includes("runplayback.com/contact") ||
+    normalizedLabel === "contact" ||
+    normalizedLabel === "email me" ||
+    normalizedLabel === "articles";
+  const isSocialOrChannelLink =
+    normalizedLabel === "instagram" ||
+    normalizedLabel === "facebook" ||
+    normalizedLabel === "twitter" ||
+    normalizedLabel === "x" ||
+    normalizedLabel === "threads" ||
+    normalizedLabel === "youtube" ||
+    normalizedUrl.includes("instagram.com/runplayback") ||
+    normalizedUrl.includes("facebook.com/runplayback") ||
+    normalizedUrl.includes("twitter.com/runplayback") ||
+    normalizedUrl.includes("x.com/runplayback") ||
+    normalizedUrl.includes("youtube.com/@") ||
+    normalizedUrl.includes("youtube.com/channel/") ||
+    normalizedUrl.includes("youtu.be/");
+  const isRunPlayBackStorefrontLink =
+    normalizedLabel === "amazon.com" ||
+    normalizedUrl.includes("amazon.com/shop/runplayback");
+  const isVideoPartLink =
+    /^part\s+\d+\b/.test(normalizedLabel) ||
+    normalizedLabel.startsWith("full review") ||
+    normalizedLabel.startsWith("watch on youtube");
+
+  return (
+    normalizedLabel.startsWith("video still from ") ||
+    normalizedUrl.includes("/article-stills/") ||
+    isRunPlayBackArticleLink ||
+    isRunPlayBackContactLink ||
+    isSocialOrChannelLink ||
+    isRunPlayBackStorefrontLink ||
+    isVideoPartLink
+  );
+}
+
+function mergeDisplayArticleLinks(
+  ...linkGroups: Array<Array<{ id?: string; label: string; url: string }> | null | undefined>
+) {
+  const seen = new Set<string>();
+  const merged: Array<{ id: string; label: string; url: string }> = [];
+
+  for (const group of linkGroups) {
+    for (const link of group || []) {
+      const url = link.url.trim();
+      const key = url.toLowerCase();
+
+      if (!url || seen.has(key) || isDisplayArticleLinkNoise(link)) {
+        continue;
+      }
+
+      seen.add(key);
+      merged.push({
+        id: link.id || key,
+        label: link.label,
+        url,
+      });
+    }
+  }
+
+  return merged;
+}
+
+function sanitizePublicDisplayLinks(
+  links: Array<{ id?: string; label: string; url: string }> | null | undefined,
+) {
+  return filterRenderableArticleLinks(
+    (links || []).filter(
+      (link) => isStrictPublicDescriptionLink(link) && !isDisplayArticleLinkNoise(link),
+    ),
+  );
+}
+
+function filterRenderableArticleLinks(
+  links: Array<{ id?: string; label: string; url: string }> | null | undefined,
+) {
+  return (links || []).filter((link) => {
+    const label = link.label.trim().toLowerCase();
+    const url = link.url.trim().toLowerCase();
+
+    if (!url) {
+      return false;
+    }
+
+    if (
+      url.includes("runplayback.com/articles") ||
+      url.includes("runplayback.com/contact") ||
+      url === "http://runplayback.com" ||
+      url === "https://runplayback.com" ||
+      url.includes("amazon.com/shop/runplayback") ||
+      url.includes("/article-stills/")
+    ) {
+      return false;
+    }
+
+    if (
+      label === "instagram" ||
+      label === "facebook" ||
+      label === "twitter" ||
+      label === "x" ||
+      label === "threads" ||
+      label === "youtube" ||
+      label === "contact" ||
+      label === "email me" ||
+      label === "articles" ||
+      label === "amazon.com" ||
+      /^part\s+\d+\b/.test(label) ||
+      label.startsWith("full review") ||
+      label.startsWith("watch on youtube") ||
+      label.startsWith("video still from ")
+    ) {
+      return false;
+    }
+
+    if (
+      url.includes("instagram.com/runplayback") ||
+      url.includes("facebook.com/runplayback") ||
+      url.includes("twitter.com/runplayback") ||
+      url.includes("x.com/runplayback") ||
+      url.includes("youtube.com/@") ||
+      url.includes("youtube.com/channel/") ||
+      url.includes("youtu.be/")
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+function isStrictPublicDescriptionLink(link: {
+  id?: string;
+  label: string;
+  url: string;
+}) {
+  const label = link.label.trim().toLowerCase();
+  const url = link.url.trim().toLowerCase();
+  const isVideoStillLink =
+    label.includes("video still") ||
+    url.includes("/article-stills/") ||
+    url.includes("/storage/v1/object/public/article-stills/");
+
+  if (!url || !isAffiliateEligibleUrl(url)) {
+    return false;
+  }
+
+  if (
+    isVideoStillLink ||
+    url.includes("amazon.com/shop/runplayback") ||
+    /^part\s+\d+\b/.test(label) ||
+    label === "instagram" ||
+    label === "facebook" ||
+    label === "twitter" ||
+    label === "x" ||
+    label === "threads" ||
+    label === "youtube" ||
+    label === "contact" ||
+    label === "email me" ||
+    label === "articles" ||
+    label === "amazon.com" ||
+    label.startsWith("full review") ||
+    label.startsWith("watch on youtube")
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function buildStrictPublicDescriptionLinks(
+  ...linkGroups: Array<Array<{ id?: string; label: string; url: string }> | null | undefined>
+) {
+  return filterRenderableArticleLinks(
+    mergeDisplayArticleLinks(...linkGroups).filter(isStrictPublicDescriptionLink),
+  );
+}
+
 function getArticleLinkRel(url: string) {
   return isAffiliateEligibleUrl(url)
     ? "sponsored nofollow noopener noreferrer"
     : "noopener noreferrer";
+}
+
+function getArticleAnchorProps(url: string) {
+  return {
+    rel: getArticleLinkRel(url),
+    target: "_blank" as const,
+  };
 }
 
 function renderLinkedText(text: string, keyPrefix: string): ReactNode[] {
@@ -269,8 +462,7 @@ function renderLinkedText(text: string, keyPrefix: string): ReactNode[] {
         className="inline-link"
         href={url}
         key={`${keyPrefix}-markdown-${markdownMatch.index}`}
-        rel={getArticleLinkRel(url)}
-        target="_blank"
+        {...getArticleAnchorProps(url)}
       >
         {label}
       </a>,
@@ -301,8 +493,7 @@ function renderLinkedText(text: string, keyPrefix: string): ReactNode[] {
           className="inline-link"
           href={cleanUrl}
           key={`${prefix}-url-${index}`}
-          rel={getArticleLinkRel(cleanUrl)}
-          target="_blank"
+          {...getArticleAnchorProps(cleanUrl)}
         >
           {cleanUrl}
         </a>,
@@ -417,6 +608,7 @@ function isInlineReviewVideoReference(line: string) {
 
 function shouldSkipArticleSection(heading: string) {
   return (
+    heading === "links" ||
     heading === "related reviews" ||
     heading === "video" ||
     heading === "chapters" ||
@@ -789,6 +981,7 @@ function buildArticleBlocks(
   content: string,
   fallbackImageUrl = "",
   youtubeVideoId = "",
+  inlineLinks: Array<{ label: string; url: string }> = [],
 ): ArticleBlock[] {
   const blocks: ArticleBlock[] = [];
   let activeHeading = "";
@@ -914,6 +1107,11 @@ function buildArticleBlocks(
     const generatedLink = isGeneratedLinksLine
       ? parseGeneratedLinkLine(displayLine)
       : null;
+
+    if (isGeneratedLinksLine && generatedLink && isDisplayArticleLinkNoise(generatedLink)) {
+      return;
+    }
+
     const linkText = generatedLink
       ? generatedLink.label
       : listMatch
@@ -940,13 +1138,18 @@ function buildArticleBlocks(
           : "article-compact-links"
         : undefined;
 
+    const normalizedText = normalizeFirstPersonVoice(linkText);
+    const linkedText =
+      !className && inlineLinks.length
+        ? injectAffiliateLinksIntoLine(normalizedText, inlineLinks)
+        : normalizedText;
     blocks.push({
       className: listMatch && !isGeneratedLinksLine
         ? `article-list-line ${className || ""}`.trim()
         : className,
       href: generatedLink?.url || undefined,
       key: `${linkText}-${index}`,
-      text: normalizeFirstPersonVoice(linkText),
+      text: linkedText,
       type: listMatch && !isGeneratedLinksLine ? "list" : "paragraph",
     });
 
@@ -1450,16 +1653,24 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
       platform: "email" as const,
     },
   ];
-  const articleContentWithAffiliateLinks = injectAffiliateLinksIntoContent(
-    article.content,
-    article.links,
+  const isComparisonArticle = isVersusArticle(article);
+  const orderedVideoDescriptionLinks = buildStrictPublicDescriptionLinks(
+    ...articleVideos.map((video) => video.affiliateLinks || []),
+  );
+  const fallbackArticleLinks = isComparisonArticle
+    ? []
+    : buildStrictPublicDescriptionLinks(article.links);
+  const displayArticleLinks = sanitizePublicDisplayLinks(
+    orderedVideoDescriptionLinks.length
+    ? orderedVideoDescriptionLinks
+    : fallbackArticleLinks,
   );
   const rawArticleBlocks = buildArticleBlocks(
-    articleContentWithAffiliateLinks,
+    article.content,
     article.featuredImageUrl,
     article.video?.youtubeVideoId,
+    displayArticleLinks,
   );
-  const isComparisonArticle = isVersusArticle(article);
   const articleBlocksWithFallback = isVersusArticle(article)
     ? rawArticleBlocks.filter((block) => block.type !== "image")
     : addFallbackArticleImage(
@@ -1475,11 +1686,8 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
         ...versusSourceVideoStillBlocks,
       ])
     : reflowVideoStillBlocks(articleBlocksWithFallback, targetVideoStillCount);
-  const hasAffiliateLinks = article.links.some((link) =>
+  const hasAffiliateLinks = displayArticleLinks.some((link) =>
     isAffiliateEligibleUrl(link.url),
-  );
-  const firstBodyLinksBlockIndex = articleBlocks.findIndex(
-    (block) => block.type === "heading" && normalizeHeading(block.text) === "links",
   );
   const relatedReviewsSection = relatedArticles.length ? (
     <section className="article-related-section" aria-label="Related reviews">
@@ -1498,17 +1706,26 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
       </div>
     </section>
   ) : null;
-  const merchLinkIndex = article.links.findIndex((link) =>
-    link.label.toLowerCase().includes("runplayback merch"),
-  );
-  const visibleArticleLinksBase =
-    merchLinkIndex === -1
-      ? article.links
-      : article.links.slice(0, merchLinkIndex + 1);
-  const visibleArticleLinks = visibleArticleLinksBase.filter(
-    (link) => !isYouTubeLink(link.url),
-  );
-
+  const articleLinksSection = displayArticleLinks.length ? (
+    <section
+      className="article-related-section article-links-section"
+      aria-label="Review links"
+    >
+      <h2>Links</h2>
+      <div className="article-related-links article-links-list">
+        {displayArticleLinks.map((link) => (
+          <a
+            href={link.url}
+            key={link.id}
+            rel={getArticleLinkRel(link.url)}
+            target="_blank"
+          >
+            {getArticleLinkLabel(link.label, link.url)}
+          </a>
+        ))}
+      </div>
+    </section>
+  ) : null;
   const articleJsonLd = {
     "@context": "https://schema.org",
     "@graph": [
@@ -1614,8 +1831,8 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
         <Link
           className="article-kicker-category"
           href={`/articles/categories/${articleCategory.slug}`}
-          rel="noopener noreferrer"
           target="_blank"
+          rel="noopener noreferrer"
         >
           {articleCategory.label}
         </Link>
@@ -1644,8 +1861,6 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
             <p className="affiliate-disclosure">{affiliateDisclosureText}</p>
           ) : null}
           {articleBlocks.map((block, index) => {
-            const shouldInsertRelatedReviews =
-              relatedReviewsSection && index === firstBodyLinksBlockIndex;
             let renderedBlock: ReactNode;
 
             if (block.type === "heading") {
@@ -1664,8 +1879,7 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
                     <a
                       className="inline-link"
                       href={block.href}
-                      rel={getArticleLinkRel(block.href)}
-                      target="_blank"
+                      {...getArticleAnchorProps(block.href)}
                     >
                       {block.text}
                     </a>
@@ -1687,8 +1901,7 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
                     <a
                       className="inline-link"
                       href={block.href}
-                      rel={getArticleLinkRel(block.href)}
-                      target="_blank"
+                      {...getArticleAnchorProps(block.href)}
                     >
                       {block.text}
                     </a>
@@ -1701,12 +1914,13 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
 
             return (
               <Fragment key={block.key}>
-                {shouldInsertRelatedReviews ? relatedReviewsSection : null}
                 {renderedBlock}
               </Fragment>
             );
           })}
         </div>
+        {relatedReviewsSection}
+        {articleLinksSection}
         {articleVideos.length ? (
           <section className="article-video-section" aria-label="Review videos">
             <h2 className="section-title">
@@ -1727,24 +1941,6 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
             </div>
           </section>
         ) : null}
-        {firstBodyLinksBlockIndex === -1 ? relatedReviewsSection : null}
-        {visibleArticleLinks.length ? (
-          <section className="article-video-section" aria-label="Review links">
-            <h2 className="section-title">Links</h2>
-            <div className="article-link-list">
-              {visibleArticleLinks.map((link) => (
-                <a
-                  href={link.url}
-                  key={link.id}
-                  rel={getArticleLinkRel(link.url)}
-                  target="_blank"
-                >
-                  {getArticleLinkLabel(link.label, link.url)}
-                </a>
-              ))}
-            </div>
-          </section>
-        ) : null}
         <section className="article-share-section" aria-label="Share this review">
           <h2 className="section-title">Share This Review</h2>
           <div className="article-share-links">
@@ -1753,7 +1949,7 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
                 aria-label={`Share on ${link.label}`}
                 href={link.href}
                 key={link.label}
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 target="_blank"
               >
                 <ShareIcon platform={link.platform} />
@@ -1765,8 +1961,6 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
           <Link
             className="button secondary-button"
             href="/articles"
-            rel="noopener noreferrer"
-            target="_blank"
           >
             All Reviews
           </Link>
@@ -1774,8 +1968,6 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
             <Link
               className="button"
               href={`/articles/${nextArticle.slug}`}
-              rel="noopener noreferrer"
-              target="_blank"
             >
               Next Review
             </Link>
