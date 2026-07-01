@@ -18,6 +18,9 @@ type TokenResponse = {
   error_description?: string;
 };
 
+const youtubeReconnectMessage =
+  "YouTube captions access expired. Click Connect YouTube Captions and sign in with Google again.";
+
 export function getGoogleOAuthConfig() {
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
@@ -105,6 +108,13 @@ async function refreshAccessToken(refreshToken: string) {
   const tokens = (await response.json()) as TokenResponse;
 
   if (!response.ok || !tokens.access_token) {
+    if (
+      tokens.error === "invalid_grant" ||
+      tokens.error_description?.toLowerCase().includes("expired or revoked")
+    ) {
+      throw new Error(youtubeReconnectMessage);
+    }
+
     throw new Error(
       tokens.error_description || tokens.error || "Unable to refresh YouTube token.",
     );
@@ -163,7 +173,7 @@ export async function getValidYouTubeAccessToken(supabase: SupabaseClient) {
   }
 
   if (!token.refresh_token) {
-    throw new Error("YouTube authorization expired. Reconnect YouTube captions.");
+    throw new Error(youtubeReconnectMessage);
   }
 
   const refreshed = await refreshAccessToken(token.refresh_token);

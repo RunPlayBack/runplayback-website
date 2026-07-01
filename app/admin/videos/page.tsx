@@ -81,6 +81,21 @@ function getStatusMessage(searchParams?: {
   return null;
 }
 
+function shouldShowYouTubeReconnect(message?: string) {
+  if (!message) {
+    return false;
+  }
+
+  const normalized = message.toLowerCase();
+
+  return (
+    normalized.includes("youtube captions access expired") ||
+    normalized.includes("token has been expired or revoked") ||
+    normalized.includes("youtube authorization expired") ||
+    normalized.includes("connect youtube captions")
+  );
+}
+
 export default async function AdminVideosPage({
   searchParams,
 }: AdminVideosPageProps) {
@@ -133,7 +148,16 @@ export default async function AdminVideosPage({
         </div>
       </div>
       {statusMessage ? (
-        <p className={statusMessage.className}>{statusMessage.text}</p>
+        <div className={statusMessage.className}>
+          <p>{statusMessage.text}</p>
+          {shouldShowYouTubeReconnect(statusMessage.text) ? (
+            <div className="actions compact-actions">
+              <a className="button" href="/admin/youtube/connect">
+                Reconnect YouTube Captions
+              </a>
+            </div>
+          ) : null}
+        </div>
       ) : null}
       {errorMessage && !statusMessage ? <p className="form-error">{errorMessage}</p> : null}
       <form action={addYouTubeVideo} className="admin-card form">
