@@ -307,6 +307,50 @@ button {
   line-height: 1.45;
 }
 
+.home-feature-transition {
+  animation: home-feature-in 420ms ease both;
+}
+
+.home-latest-row .article-card {
+  animation: home-card-in 320ms ease both;
+}
+
+@keyframes home-feature-in {
+  from {
+    opacity: 0.86;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes home-card-in {
+  from {
+    opacity: 0.9;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-feature-transition,
+  .home-latest-row .article-card {
+    animation: none;
+  }
+
+  .home-hero-image img,
+  .home-latest-row .article-card img {
+    transition: none;
+  }
+}
+
 .home-hero-copy-empty {
   min-height: 320px;
 }

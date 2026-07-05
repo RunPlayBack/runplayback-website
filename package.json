@@ -19,7 +19,8 @@
     "rename:article-stills": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node scripts/rename-article-still-filenames.mjs",
     "rename:article-stills:ai": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node scripts/rename-article-still-filenames.mjs --ai-filenames",
     "backfill:affiliate-inline-links": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node --experimental-strip-types scripts/backfill-article-inline-affiliate-links.mjs",
-    "audit:affiliate-inline-links": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node --experimental-strip-types scripts/audit-affiliate-inline-links.mjs"
+    "audit:affiliate-inline-links": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node --experimental-strip-types scripts/audit-affiliate-inline-links.mjs",
+    "check:seo": "node scripts/check-seo-hygiene.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

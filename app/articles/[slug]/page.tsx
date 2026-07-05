@@ -1550,7 +1550,13 @@ export async function generateMetadata({
   const article = await getPublishedArticleBySlug(slug);
 
   if (!article) {
-    return {};
+    return {
+      title: "Review not found",
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
   }
 
   const comparisonSourceImages =
@@ -1595,6 +1601,10 @@ export async function generateMetadata({
       title: article.seoTitle,
       description: article.seoDescription,
       images: metadataImages?.map((image) => image.url),
+    },
+    robots: {
+      index: true,
+      follow: true,
     },
   };
 }

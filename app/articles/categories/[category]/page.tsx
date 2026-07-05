@@ -6,6 +6,7 @@ import {
   articleCategories,
   getArticleCategoryBySlug,
   getArticlesForCategory,
+  minimumIndexedCategoryArticles,
 } from "@/lib/article-categories";
 import { getPublishedArticles } from "@/lib/articles";
 
@@ -71,8 +72,17 @@ export async function generateMetadata({
   const category = getArticleCategoryBySlug(categorySlug);
 
   if (!category) {
-    return {};
+    return {
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
   }
+
+  const articles = await getPublishedArticles();
+  const articleCount = getArticlesForCategory(articles, category.slug).length;
+  const shouldIndex = articleCount >= minimumIndexedCategoryArticles;
 
   return {
     title: `${category.label} Reviews`,
@@ -84,6 +94,10 @@ export async function generateMetadata({
       title: `RunPlayBack ${category.label} Reviews`,
       description: category.description,
       url: `/articles/categories/${category.slug}`,
+    },
+    robots: {
+      index: shouldIndex,
+      follow: true,
     },
   };
 }

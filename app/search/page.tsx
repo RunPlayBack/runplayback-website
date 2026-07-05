@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getPublishedArticles } from "@/lib/articles";
 
@@ -9,6 +10,34 @@ type SearchPageProps = {
 
 function normalizeSearchText(value: string) {
   return value.trim().toLowerCase();
+}
+
+export async function generateMetadata({
+  searchParams,
+}: SearchPageProps): Promise<Metadata> {
+  const resolvedSearchParams = await searchParams;
+  const query = String(resolvedSearchParams?.q || "").trim();
+
+  if (query) {
+    return {
+      title: `Search results for ${query}`,
+      alternates: {
+        canonical: "/search",
+      },
+      robots: {
+        index: false,
+        follow: true,
+      },
+    };
+  }
+
+  return {
+    title: "Search RunPlayBack",
+    description: "Search RunPlayBack EV reviews, articles, and guides.",
+    alternates: {
+      canonical: "/search",
+    },
+  };
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {

@@ -1,5 +1,9 @@
 import type { MetadataRoute } from "next";
-import { articleCategories } from "@/lib/article-categories";
+import {
+  articleCategories,
+  getArticlesForCategory,
+  minimumIndexedCategoryArticles,
+} from "@/lib/article-categories";
 import { getPublishedArticles } from "@/lib/articles";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +20,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/contact",
   ];
   const articles = await getPublishedArticles();
+  const indexableCategories = articleCategories.filter(
+    (category) =>
+      getArticlesForCategory(articles, category.slug).length >=
+      minimumIndexedCategoryArticles,
+  );
 
   return [
     ...staticPages.map((path) => ({
@@ -24,10 +33,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority: path === "" ? 1 : 0.8,
     })),
-    ...articleCategories.map((category) => ({
-      url: `${siteUrl}/articles/categories/${category.slug}`,
-      lastModified: new Date(),
-      changeFrequency: "weekly" as const,
+        ...indexableCategories.map((category) => ({
+          url: `${siteUrl}/articles/categories/${category.slug}`,
+          lastModified: new Date(),
+          changeFrequency: "weekly" as const,
       priority: 0.75,
     })),
     ...articles.map((article) => ({

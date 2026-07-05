@@ -240,13 +240,13 @@ function insertReviewBlock(description, reviewUrl) {
     productInsertionIndex >= 0
       ? Math.min(paragraphEndIndex, productInsertionIndex)
       : paragraphEndIndex;
-  const block = [reviewIntro, reviewUrl];
+  const block = `${reviewIntro} ${reviewUrl}`;
   const before = lines.slice(0, insertionIndex);
   const after = lines.slice(insertionIndex);
   const output = [
     ...before,
     before.at(-1)?.trim() ? "" : null,
-    ...block,
+    block,
     after[0]?.trim() ? "" : null,
     ...after,
   ].filter((line) => line !== null);
@@ -254,10 +254,28 @@ function insertReviewBlock(description, reviewUrl) {
   return output.join("\n").replace(/\n{4,}/g, "\n\n\n").trimEnd();
 }
 
+function normalizeReviewLinkLine(description) {
+  const pattern =
+    /Read the full written review:\n+(https:\/\/runplayback\.com\/articles\/[^\s]+)/g;
+  const updatedDescription = description.replace(pattern, `${reviewIntro} $1`);
+
+  return {
+    changed: updatedDescription !== description,
+    description: updatedDescription,
+  };
+}
+
 function buildYouTubeDescriptionUpdate({ articleSlug, currentDescription }) {
   const reviewUrl = `https://runplayback.com/articles/${articleSlug}`;
   const changes = [];
   let proposedDescription = normalizeLineEndings(currentDescription);
+  const reviewLineUpdate = normalizeReviewLinkLine(proposedDescription);
+
+  if (reviewLineUpdate.changed) {
+    proposedDescription = reviewLineUpdate.description;
+    changes.push("Moved the written review URL onto the same line.");
+  }
+
   const contactUpdate = replaceOldContactLine(proposedDescription);
 
   if (contactUpdate.changed) {
@@ -274,6 +292,21 @@ function buildYouTubeDescriptionUpdate({ articleSlug, currentDescription }) {
     changed: proposedDescription !== normalizeLineEndings(currentDescription),
     changes,
     proposedDescription,
+    reviewUrl,
+  };
+}
+
+function buildReviewLineOnlyUpdate({ articleSlug, currentDescription }) {
+  const reviewUrl = `https://runplayback.com/articles/${articleSlug}`;
+  const proposedDescription = normalizeLineEndings(currentDescription);
+  const reviewLineUpdate = normalizeReviewLinkLine(proposedDescription);
+
+  return {
+    changed: reviewLineUpdate.changed,
+    changes: reviewLineUpdate.changed
+      ? ["Moved the written review URL onto the same line."]
+      : [],
+    proposedDescription: reviewLineUpdate.description,
     reviewUrl,
   };
 }
@@ -497,6 +530,7 @@ async function main() {
   loadEnv();
 
   const apply = hasFlag("apply");
+  const normalizeReviewLineOnly = hasFlag("normalize-review-line-only");
   const continueOnError = hasFlag("continue-on-error");
   const continueOnQuota = hasFlag("continue-on-quota");
   const all = hasFlag("all");
@@ -534,6 +568,9 @@ async function main() {
       ? "Applying YouTube description updates..."
       : "Dry run: previewing YouTube description updates...",
   );
+  if (normalizeReviewLineOnly) {
+    console.log("Mode: only normalizing existing written review link line breaks.");
+  }
   console.log(
     all ? "Limit: all matching published reviews" : `Limit: ${selectedCandidates.length}`,
   );
@@ -565,10 +602,15 @@ async function main() {
         video.youtube_video_id,
       );
       const liveDescription = liveVideo.snippet.description || "";
-      const preview = buildYouTubeDescriptionUpdate({
-        articleSlug: article.slug,
-        currentDescription: liveDescription,
-      });
+      const preview = normalizeReviewLineOnly
+        ? buildReviewLineOnlyUpdate({
+            articleSlug: article.slug,
+            currentDescription: liveDescription,
+          })
+        : buildYouTubeDescriptionUpdate({
+            articleSlug: article.slug,
+            currentDescription: liveDescription,
+          });
 
       if (!preview.changed) {
         summary.skippedNoChange += 1;

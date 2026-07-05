@@ -144,18 +144,29 @@ function insertReviewBlock(description: string, reviewUrl: string) {
     productInsertionIndex >= 0
       ? Math.min(paragraphEndIndex, productInsertionIndex)
       : paragraphEndIndex;
-  const block = [reviewIntro, reviewUrl];
+  const block = `${reviewIntro} ${reviewUrl}`;
   const before = lines.slice(0, insertionIndex);
   const after = lines.slice(insertionIndex);
   const output = [
     ...before,
     before.at(-1)?.trim() ? "" : null,
-    ...block,
+    block,
     after[0]?.trim() ? "" : null,
     ...after,
   ].filter((line): line is string => line !== null);
 
   return output.join("\n").replace(/\n{4,}/g, "\n\n\n").trimEnd();
+}
+
+function normalizeReviewLinkLine(description: string) {
+  const pattern =
+    /Read the full written review:\n+(https:\/\/runplayback\.com\/articles\/[^\s]+)/g;
+  const updatedDescription = description.replace(pattern, `${reviewIntro} $1`);
+
+  return {
+    changed: updatedDescription !== description,
+    description: updatedDescription,
+  };
 }
 
 export function buildYouTubeDescriptionUpdate({
@@ -168,6 +179,13 @@ export function buildYouTubeDescriptionUpdate({
   const reviewUrl = `https://runplayback.com/articles/${articleSlug}`;
   const changes: string[] = [];
   let proposedDescription = normalizeLineEndings(currentDescription);
+  const reviewLineUpdate = normalizeReviewLinkLine(proposedDescription);
+
+  if (reviewLineUpdate.changed) {
+    proposedDescription = reviewLineUpdate.description;
+    changes.push("Moved the written review URL onto the same line.");
+  }
+
   const contactUpdate = replaceOldContactLine(proposedDescription);
 
   if (contactUpdate.changed) {

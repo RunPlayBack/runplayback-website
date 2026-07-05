@@ -7,6 +7,8 @@ export type ArticleCategory = {
   keywords: string[];
 };
 
+export const minimumIndexedCategoryArticles = 3;
+
 export const articleCategories: ArticleCategory[] = [
   {
     description:

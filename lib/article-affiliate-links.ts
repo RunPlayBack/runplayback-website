@@ -622,24 +622,6 @@ function linkifyPlainTextSegment(
   );
 }
 
-function buildFallbackAffiliateLine(
-  links: Array<{ label: string; url: string }>,
-  usedUrls: Set<string>,
-) {
-  const remainingLinks = links.filter((link) => !usedUrls.has(link.url));
-
-  if (!remainingLinks.length) {
-    return "";
-  }
-
-  const fallbackLinks = remainingLinks.slice(0, 2);
-  const linkedLabels = fallbackLinks
-    .map((link) => `[${link.label}](${link.url})`)
-    .join(" and ");
-
-  return `Read more: ${linkedLabels}`;
-}
-
 function linkifyLine(
   line: string,
   links: Array<{ label: string; url: string }>,
@@ -688,14 +670,12 @@ export function injectAffiliateLinksIntoContent(
     return content;
   }
 
-  const lines = content.split("\n");
+  const lines = content
+    .split("\n")
+    .filter((line) => !/^read more:\s+/i.test(line.trim()));
   const usedUrls = new Set<string>();
   const output: string[] = [];
   let inLinksSection = false;
-  let insertedInlineAffiliateLink = false;
-  const alreadyHasReadMoreLine = lines.some((line) =>
-    /^read more:\s+/i.test(line.trim()),
-  );
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -712,37 +692,7 @@ export function injectAffiliateLinksIntoContent(
     }
 
     const linkedLine = linkifyLine(line, affiliateLinks, usedUrls);
-
-    if (linkedLine !== line && !insertedInlineAffiliateLink) {
-      insertedInlineAffiliateLink = true;
-    }
-
     output.push(linkedLine);
-  }
-
-  if (!insertedInlineAffiliateLink && !alreadyHasReadMoreLine) {
-    const fallbackLine = buildFallbackAffiliateLine(affiliateLinks, usedUrls);
-
-    if (fallbackLine) {
-      const insertionIndex = output.findIndex((line) => {
-        const trimmed = line.trim();
-
-        return (
-          trimmed &&
-          !/^#{1,6}\s+/.test(trimmed) &&
-          !/^[-*•]\s+/.test(trimmed) &&
-          !/^\d+\.\s+/.test(trimmed) &&
-          !/^!\[[^\]]*]\(https?:\/\/[^)]+\)$/i.test(trimmed)
-        );
-      });
-
-      if (insertionIndex === -1) {
-        output.push("");
-        output.push(fallbackLine);
-      } else {
-        output.splice(insertionIndex + 1, 0, "", fallbackLine);
-      }
-    }
   }
 
   return output.join("\n");
