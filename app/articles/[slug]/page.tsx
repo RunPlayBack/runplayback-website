@@ -1695,7 +1695,7 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
         ...articleBlocksWithFallback,
         ...versusSourceVideoStillBlocks,
       ])
-    : reflowVideoStillBlocks(articleBlocksWithFallback, targetVideoStillCount);
+    : articleBlocksWithFallback;
   const hasAffiliateLinks = displayArticleLinks.some((link) =>
     isAffiliateEligibleUrl(link.url),
   );
