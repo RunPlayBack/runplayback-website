@@ -551,6 +551,11 @@ function isSkippableStillPlacementHeading(heading) {
     !heading ||
     heading === "introduction" ||
     heading === "intro" ||
+    heading === "what we like" ||
+    heading === "things to consider" ||
+    heading === "pros" ||
+    heading === "cons" ||
+    heading === "pros and cons" ||
     heading === "final thoughts" ||
     heading === "final verdict" ||
     heading === "conclusion"
@@ -573,7 +578,7 @@ function getEligibleHeadingIndexes(lines) {
       return;
     }
 
-    if (isHeading(trimmed)) {
+    if (/^##\s+/.test(trimmed) && !/^###\s+/.test(trimmed)) {
       const heading = normalizeHeading(trimmed);
 
       if (shouldStopStillPlacementAtHeading(heading)) {
