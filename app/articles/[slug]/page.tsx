@@ -14,7 +14,7 @@ import {
 } from "@/lib/articles";
 import rawArticleImageFallbacks from "@/data/article-image-fallbacks.json";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 type ArticlePageProps = {
   params: Promise<{

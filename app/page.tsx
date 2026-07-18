@@ -7,7 +7,7 @@ import { getPublishedArticles } from "@/lib/articles";
 import { getPopularVideos } from "@/lib/popular-videos";
 import { fetchRunPlayBackChannelStats } from "@/lib/youtube/channel-stats";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "RunPlayBack",

@@ -10,7 +10,7 @@ import {
 } from "@/lib/article-categories";
 import { getPublishedArticles } from "@/lib/articles";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 type CategoryPageProps = {
   params: Promise<{

@@ -4,7 +4,7 @@ import { ArticleCard, formatArticleDate } from "@/components/ArticleCard";
 import { articleCategories } from "@/lib/article-categories";
 import { getPublishedArticleBySlug, getPublishedArticles } from "@/lib/articles";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 const articlesPerPage = 9;
 
