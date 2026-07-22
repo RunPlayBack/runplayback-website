@@ -83,6 +83,7 @@ export async function addYouTubeVideo(formData: FormData) {
       video_url: videoUrl,
       published_at: metadata?.publishedAt || null,
       captions_text: captionsText || null,
+      archived_at: null,
     },
     {
       onConflict: "youtube_video_id",
