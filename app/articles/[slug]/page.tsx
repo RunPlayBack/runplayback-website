@@ -321,6 +321,45 @@ function sanitizePublicDisplayLinks(
   );
 }
 
+const ARTICLE_LINK_ORDER_OVERRIDES: Record<string, string[]> = {
+  "freego-flektrike-pro-review-tilting-electric-trike-pDRe_P_Yr8I": [
+    "https://flektrike.com/products/flektrike-pro?ref=runplayback",
+  ],
+  "freego-x3-pro-review-72v-electric-dirt-bike-9xTSyZL_agY": [
+    "https://freegobikes.com/products/freego-x3-all-terrain-electric-dirt-bike-with-pedals",
+  ],
+};
+
+function normalizeDisplayLinkOrderUrl(url: string) {
+  return url.trim().replace(/\/+$/, "").toLowerCase();
+}
+
+function orderDisplayLinksForArticle<T extends { url: string }>(slug: string, links: T[]) {
+  const priorityUrls = ARTICLE_LINK_ORDER_OVERRIDES[slug]?.map(normalizeDisplayLinkOrderUrl);
+
+  if (!priorityUrls?.length) {
+    return links;
+  }
+
+  const priorities = new Map(priorityUrls.map((url, index) => [url, index]));
+
+  return links
+    .map((link, index) => ({ link, index }))
+    .sort((a, b) => {
+      const aPriority =
+        priorities.get(normalizeDisplayLinkOrderUrl(a.link.url)) ?? Number.POSITIVE_INFINITY;
+      const bPriority =
+        priorities.get(normalizeDisplayLinkOrderUrl(b.link.url)) ?? Number.POSITIVE_INFINITY;
+
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority;
+      }
+
+      return a.index - b.index;
+    })
+    .map(({ link }) => link);
+}
+
 function filterRenderableArticleLinks(
   links: Array<{ id?: string; label: string; url: string }> | null | undefined,
 ) {
@@ -1670,10 +1709,11 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
   const fallbackArticleLinks = isComparisonArticle
     ? []
     : buildStrictPublicDescriptionLinks(article.links);
-  const displayArticleLinks = sanitizePublicDisplayLinks(
-    orderedVideoDescriptionLinks.length
-    ? orderedVideoDescriptionLinks
-    : fallbackArticleLinks,
+  const displayArticleLinks = orderDisplayLinksForArticle(
+    article.slug,
+    sanitizePublicDisplayLinks(
+      orderedVideoDescriptionLinks.length ? orderedVideoDescriptionLinks : fallbackArticleLinks,
+    ),
   );
   const rawArticleBlocks = buildArticleBlocks(
     article.content,
