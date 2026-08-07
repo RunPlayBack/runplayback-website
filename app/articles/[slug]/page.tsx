@@ -322,6 +322,9 @@ function sanitizePublicDisplayLinks(
 }
 
 const ARTICLE_LINK_ORDER_OVERRIDES: Record<string, string[]> = {
+  "eunorau-s1-mini-electric-dirt-bike-review-QgCWyoIx4qA": [
+    "https://eunorau-ebike.com/products/s1-dirt-bike?ref=gowithrunplayback&utm_medium=affiliate&utm_source=goaffpro",
+  ],
   "freego-flektrike-pro-review-tilting-electric-trike-pDRe_P_Yr8I": [
     "https://flektrike.com/products/flektrike-pro?ref=runplayback",
   ],
