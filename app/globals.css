@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
   --bg: #ffffff;
   --ink: #1b1b1b;
@@ -27,6 +29,18 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   line-height: 1.6;
   margin: 0;
+}
+
+body:has(.deranged-fan-app) .site-header,
+body:has(.deranged-fan-app) .site-footer,
+body.deranged-fan-route .site-header,
+body.deranged-fan-route .site-footer {
+  display: none;
+}
+
+body:has(.deranged-fan-app),
+body.deranged-fan-route {
+  background: #fbfbf7;
 }
 
 a {
