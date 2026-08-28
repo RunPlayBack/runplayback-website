@@ -1,6 +1,6 @@
 const FPS = 24000 / 1001;
 const SECONDS_PER_FRAME = 1 / FPS;
-const PAUSE_GAP_SECONDS = 0.35;
+const PAUSE_GAP_SECONDS = 2;
 const SECTION_HEADING_PATTERN =
   /^\s*\[(?:verse(?:\s+\d+)?|chorus|hook|bridge|outro)\]\s*$/i;
 

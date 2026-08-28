@@ -1,7 +1,7 @@
 import type { TimedLyricWord } from "@/lib/srt/alignment";
 
 const PROJECT_FRAMES_PER_SECOND = 24_000 / 1_001;
-const PAUSE_GAP_SECONDS = 0.35;
+const PAUSE_GAP_SECONDS = 2;
 const SECONDS_PER_FRAME = 1 / PROJECT_FRAMES_PER_SECOND;
 
 type FramedCue = {
