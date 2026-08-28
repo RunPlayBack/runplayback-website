@@ -10,8 +10,12 @@ type FramedCue = {
   naturalEndFrame: number;
 };
 
-function secondsToFrame(seconds: number) {
-  return Math.max(0, Math.round(seconds / SECONDS_PER_FRAME));
+function secondsToStartFrame(seconds: number) {
+  return Math.max(0, Math.floor(seconds / SECONDS_PER_FRAME));
+}
+
+function secondsToEndFrame(seconds: number) {
+  return Math.max(0, Math.floor(seconds / SECONDS_PER_FRAME));
 }
 
 function frameToSeconds(frame: number) {
@@ -38,14 +42,14 @@ function buildFramedCues(words: TimedLyricWord[]) {
   for (const word of words) {
     const previous = cues.at(-1);
     const startFrame = Math.max(
-      secondsToFrame(word.start),
+      secondsToStartFrame(word.start),
       previous ? previous.startFrame + 1 : 0,
     );
 
     cues.push({
       word: word.word,
       startFrame,
-      naturalEndFrame: Math.max(startFrame + 1, secondsToFrame(word.end)),
+      naturalEndFrame: Math.max(startFrame + 1, secondsToEndFrame(word.end)),
     });
   }
 
@@ -62,7 +66,7 @@ export function generateSrt(words: TimedLyricWord[]) {
       const nextSourceWord = words[index + 1];
       const rawGapToNext =
         nextSourceWord && sourceWord
-          ? nextSourceWord.start - sourceWord.end
+          ? nextSourceWord.speechStart - sourceWord.speechEnd
           : Number.POSITIVE_INFINITY;
       let endFrame =
         nextCue && rawGapToNext >= 0 && rawGapToNext <= PAUSE_GAP_SECONDS

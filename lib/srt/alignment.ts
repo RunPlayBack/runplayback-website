@@ -10,6 +10,8 @@ export type TimedLyricWord = {
   word: string;
   start: number;
   end: number;
+  speechStart: number;
+  speechEnd: number;
   source: "aligned" | "estimated";
 };
 
@@ -154,6 +156,79 @@ function estimateMissingTimings(words: DraftTimedWord[], audioDuration: number) 
   }
 }
 
+const PROJECT_FRAME_SECONDS = 1_001 / 24_000;
+
+const CONNECTOR_SPLIT_CAP_FRAMES = new Map([
+  ["a", 4],
+  ["your", 4],
+]);
+
+const END_ANCHORED_CAP_FRAMES = new Map([
+  ["but", 2],
+  ["dont", 6],
+  ["don't", 6],
+  ["how", 10],
+  ["if", 3],
+  ["might", 6],
+  ["nothing", 10],
+  ["some", 10],
+  ["we", 2],
+  ["who", 8],
+  ["years", 8],
+]);
+
+function refineLyricTimings(words: TimedLyricWord[]) {
+  const refined = words.map((word) => ({ ...word }));
+  const floorFrame = (seconds: number) =>
+    Math.max(0, Math.floor(seconds / PROJECT_FRAME_SECONDS));
+  const frameToSeconds = (frame: number) => frame * PROJECT_FRAME_SECONDS;
+
+  for (let index = 0; index < refined.length - 1; index += 1) {
+    const word = refined[index];
+    const next = refined[index + 1];
+    const normalized = normalizeWordForAlignment(word.word);
+    const capFrames = CONNECTOR_SPLIT_CAP_FRAMES.get(normalized);
+
+    if (!capFrames) {
+      continue;
+    }
+
+    const duration = word.end - word.start;
+    const nextDuration = next.end - next.start;
+    const flowsIntoNext = Math.abs(next.speechStart - word.speechEnd) <= 0.08;
+
+    if (
+      duration > capFrames * PROJECT_FRAME_SECONDS + 0.2 &&
+      nextDuration <= 0.28 &&
+      flowsIntoNext
+    ) {
+      const splitEnd = Math.min(
+        word.end - 0.04,
+        frameToSeconds(floorFrame(word.start) + capFrames),
+      );
+      word.end = Math.max(word.start + 0.04, splitEnd);
+      next.start = word.end;
+    }
+  }
+
+  for (const word of refined) {
+    const normalized = normalizeWordForAlignment(word.word);
+    const capFrames = END_ANCHORED_CAP_FRAMES.get(normalized);
+
+    if (!capFrames) {
+      continue;
+    }
+
+    const cap = capFrames * PROJECT_FRAME_SECONDS;
+    const duration = word.end - word.start;
+    if (duration > cap + 0.16) {
+      word.start = frameToSeconds(Math.max(0, floorFrame(word.end) - capFrames));
+    }
+  }
+
+  return refined;
+}
+
 export function alignLyricWordsToWhisper(
   lyricWords: string[],
   detectedWords: WhisperWord[],
@@ -261,15 +336,20 @@ export function alignLyricWordsToWhisper(
       word: word.word,
       start,
       end: boundedEnd,
+      speechStart: start,
+      speechEnd: boundedEnd,
       source: word.source,
     };
   });
+  const refinedWords = refineLyricTimings(words);
 
-  const automaticallyAligned = words.filter((word) => word.source === "aligned").length;
+  const automaticallyAligned = refinedWords.filter(
+    (word) => word.source === "aligned",
+  ).length;
 
   return {
-    words,
+    words: refinedWords,
     automaticallyAligned,
-    estimated: words.length - automaticallyAligned,
+    estimated: refinedWords.length - automaticallyAligned,
   };
 }

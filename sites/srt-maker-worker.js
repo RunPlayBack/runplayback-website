@@ -349,6 +349,67 @@ function estimateMissingTimings(words, audioDuration) {
   }
 }
 
+const PROJECT_FRAME_SECONDS = 1001 / 24000;
+
+const CONNECTOR_SPLIT_CAP_FRAMES = new Map([
+  ["a", 4],
+  ["your", 4],
+]);
+
+const END_ANCHORED_CAP_FRAMES = new Map([
+  ["but", 2],
+  ["dont", 6],
+  ["don't", 6],
+  ["how", 10],
+  ["if", 3],
+  ["might", 6],
+  ["nothing", 10],
+  ["some", 10],
+  ["we", 2],
+  ["who", 8],
+  ["years", 8],
+]);
+
+function refineLyricTimings(words) {
+  const refined = words.map((word) => ({ ...word }));
+  const floorFrame = (seconds) => Math.max(0, Math.floor(seconds / PROJECT_FRAME_SECONDS));
+  const frameToSeconds = (frame) => frame * PROJECT_FRAME_SECONDS;
+
+  for (let index = 0; index < refined.length - 1; index += 1) {
+    const word = refined[index];
+    const next = refined[index + 1];
+    const normalized = normalizeWordForAlignment(word.word);
+    const capFrames = CONNECTOR_SPLIT_CAP_FRAMES.get(normalized);
+
+    if (!capFrames) continue;
+
+    const duration = word.end - word.start;
+    const nextDuration = next.end - next.start;
+    const flowsIntoNext = Math.abs(next.speechStart - word.speechEnd) <= 0.08;
+
+    if (duration > capFrames * PROJECT_FRAME_SECONDS + 0.2 && nextDuration <= 0.28 && flowsIntoNext) {
+      const splitEnd = Math.min(word.end - 0.04, frameToSeconds(floorFrame(word.start) + capFrames));
+      word.end = Math.max(word.start + 0.04, splitEnd);
+      next.start = word.end;
+    }
+  }
+
+  for (const word of refined) {
+    const normalized = normalizeWordForAlignment(word.word);
+    const capFrames = END_ANCHORED_CAP_FRAMES.get(normalized);
+
+    if (!capFrames) continue;
+
+    const cap = capFrames * PROJECT_FRAME_SECONDS;
+    const duration = word.end - word.start;
+    if (duration > cap + 0.16) {
+      word.start = frameToSeconds(Math.max(0, floorFrame(word.end) - capFrames));
+    }
+  }
+
+  return refined;
+}
+
 function alignLyricWordsToWhisper(lyricWords, detectedWords, audioDuration) {
   const rowCount = lyricWords.length + 1;
   const columnCount = detectedWords.length + 1;
@@ -418,14 +479,26 @@ function alignLyricWordsToWhisper(lyricWords, detectedWords, audioDuration) {
       audioDuration > 0 && index === draftWords.length - 1
         ? Math.min(Math.max(start + 0.04, end), Math.max(audioDuration, start + 0.04))
         : end;
-    return { word: word.word, start, end: boundedEnd, source: word.source };
+    return {
+      word: word.word,
+      start,
+      end: boundedEnd,
+      speechStart: start,
+      speechEnd: boundedEnd,
+      source: word.source,
+    };
   });
-  const automaticallyAligned = words.filter((word) => word.source === "aligned").length;
-  return { words, automaticallyAligned, estimated: words.length - automaticallyAligned };
+  const refinedWords = refineLyricTimings(words);
+  const automaticallyAligned = refinedWords.filter((word) => word.source === "aligned").length;
+  return { words: refinedWords, automaticallyAligned, estimated: refinedWords.length - automaticallyAligned };
 }
 
-function secondsToFrame(seconds) {
-  return Math.max(0, Math.round(seconds / SECONDS_PER_FRAME));
+function secondsToStartFrame(seconds) {
+  return Math.max(0, Math.floor(seconds / SECONDS_PER_FRAME));
+}
+
+function secondsToEndFrame(seconds) {
+  return Math.max(0, Math.floor(seconds / SECONDS_PER_FRAME));
 }
 
 function frameToSeconds(frame) {
@@ -445,11 +518,11 @@ function generateSrt(words) {
   const framedCues = [];
   for (const word of words) {
     const previous = framedCues.at(-1);
-    const startFrame = Math.max(secondsToFrame(word.start), previous ? previous.startFrame + 1 : 0);
+    const startFrame = Math.max(secondsToStartFrame(word.start), previous ? previous.startFrame + 1 : 0);
     framedCues.push({
       word: word.word,
       startFrame,
-      naturalEndFrame: Math.max(startFrame + 1, secondsToFrame(word.end)),
+      naturalEndFrame: Math.max(startFrame + 1, secondsToEndFrame(word.end)),
     });
   }
 
@@ -458,7 +531,7 @@ function generateSrt(words) {
       const sourceWord = words[index];
       const nextCue = framedCues[index + 1];
       const nextSourceWord = words[index + 1];
-      const rawGapToNext = nextSourceWord && sourceWord ? nextSourceWord.start - sourceWord.end : Number.POSITIVE_INFINITY;
+      const rawGapToNext = nextSourceWord && sourceWord ? nextSourceWord.speechStart - sourceWord.speechEnd : Number.POSITIVE_INFINITY;
       let endFrame =
         nextCue && rawGapToNext >= 0 && rawGapToNext <= PAUSE_GAP_SECONDS ? nextCue.startFrame : cue.naturalEndFrame;
       if (nextCue) endFrame = Math.min(endFrame, nextCue.startFrame);
