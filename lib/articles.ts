@@ -201,9 +201,6 @@ function isPublicArticleLinkNoise(link: { label: string; url: string }) {
     normalizedUrl.includes("youtube.com/@") ||
     normalizedUrl.includes("youtube.com/channel/") ||
     normalizedUrl.includes("youtu.be/");
-  const isRunPlayBackStorefrontLink =
-    normalizedLabel === "amazon.com" ||
-    normalizedUrl.includes("amazon.com/shop/runplayback");
   const isVideoPartLink =
     /^part\s+\d+\b/.test(normalizedLabel) ||
     normalizedLabel.startsWith("full review") ||
@@ -215,7 +212,6 @@ function isPublicArticleLinkNoise(link: { label: string; url: string }) {
     isRunPlayBackArticleLink ||
     isRunPlayBackContactLink ||
     isSocialOrChannelLink ||
-    isRunPlayBackStorefrontLink ||
     isVideoPartLink
   );
 }

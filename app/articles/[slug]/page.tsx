@@ -231,6 +231,11 @@ function getArticleLinkLabel(label: string, url: string) {
     .replace(/[-–—:;|]+$/g, "")
     .replaceAll("**", "")
     .trim();
+  const normalizedUrl = url.trim().toLowerCase();
+
+  if (normalizedUrl.includes("amazon.com/shop/runplayback")) {
+    return "ALL of My Camera Gear and Movies";
+  }
 
   if (!cleanLabel || /^https?:\/\//i.test(cleanLabel)) {
     return humanizeUrlLabel(url);
@@ -265,9 +270,6 @@ function isDisplayArticleLinkNoise(link: { label: string; url: string }) {
     normalizedUrl.includes("youtube.com/@") ||
     normalizedUrl.includes("youtube.com/channel/") ||
     normalizedUrl.includes("youtu.be/");
-  const isRunPlayBackStorefrontLink =
-    normalizedLabel === "amazon.com" ||
-    normalizedUrl.includes("amazon.com/shop/runplayback");
   const isVideoPartLink =
     /^part\s+\d+\b/.test(normalizedLabel) ||
     normalizedLabel.startsWith("full review") ||
@@ -279,7 +281,6 @@ function isDisplayArticleLinkNoise(link: { label: string; url: string }) {
     isRunPlayBackArticleLink ||
     isRunPlayBackContactLink ||
     isSocialOrChannelLink ||
-    isRunPlayBackStorefrontLink ||
     isVideoPartLink
   );
 }
@@ -337,22 +338,60 @@ function normalizeDisplayLinkOrderUrl(url: string) {
   return url.trim().replace(/\/+$/, "").toLowerCase();
 }
 
-function orderDisplayLinksForArticle<T extends { url: string }>(slug: string, links: T[]) {
+function normalizeProductLinkText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/[_-]+/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(
+      (word) =>
+        word.length > 1 &&
+        ![
+          "and",
+          "bike",
+          "code",
+          "electric",
+          "for",
+          "promo",
+          "review",
+          "the",
+          "trike",
+          "use",
+          "with",
+        ].includes(word),
+    );
+}
+
+function getPrimaryProductLinkPriority(articleTitle: string, link: { label: string; url: string }) {
+  const titleTokens = new Set(normalizeProductLinkText(articleTitle));
+  const linkTokens = normalizeProductLinkText(`${link.label} ${link.url}`);
+  const matchingTokens = linkTokens.filter((token) => titleTokens.has(token));
+
+  return matchingTokens.length >= 2 ? 0 : 1;
+}
+
+function orderDisplayLinksForArticle<T extends { label: string; url: string }>(
+  slug: string,
+  articleTitle: string,
+  links: T[],
+) {
   const priorityUrls = ARTICLE_LINK_ORDER_OVERRIDES[slug]?.map(normalizeDisplayLinkOrderUrl);
 
-  if (!priorityUrls?.length) {
-    return links;
-  }
-
-  const priorities = new Map(priorityUrls.map((url, index) => [url, index]));
+  const priorities = new Map(
+    (priorityUrls || []).map((url, index) => [url, index]),
+  );
 
   return links
     .map((link, index) => ({ link, index }))
     .sort((a, b) => {
       const aPriority =
-        priorities.get(normalizeDisplayLinkOrderUrl(a.link.url)) ?? Number.POSITIVE_INFINITY;
+        priorities.get(normalizeDisplayLinkOrderUrl(a.link.url)) ??
+        getPrimaryProductLinkPriority(articleTitle, a.link);
       const bPriority =
-        priorities.get(normalizeDisplayLinkOrderUrl(b.link.url)) ?? Number.POSITIVE_INFINITY;
+        priorities.get(normalizeDisplayLinkOrderUrl(b.link.url)) ??
+        getPrimaryProductLinkPriority(articleTitle, b.link);
 
       if (aPriority !== bPriority) {
         return aPriority - bPriority;
@@ -379,7 +418,6 @@ function filterRenderableArticleLinks(
       url.includes("runplayback.com/contact") ||
       url === "http://runplayback.com" ||
       url === "https://runplayback.com" ||
-      url.includes("amazon.com/shop/runplayback") ||
       url.includes("/article-stills/")
     ) {
       return false;
@@ -395,7 +433,6 @@ function filterRenderableArticleLinks(
       label === "contact" ||
       label === "email me" ||
       label === "articles" ||
-      label === "amazon.com" ||
       /^part\s+\d+\b/.test(label) ||
       label.startsWith("full review") ||
       label.startsWith("watch on youtube") ||
@@ -438,7 +475,6 @@ function isStrictPublicDescriptionLink(link: {
 
   if (
     isVideoStillLink ||
-    url.includes("amazon.com/shop/runplayback") ||
     /^part\s+\d+\b/.test(label) ||
     label === "instagram" ||
     label === "facebook" ||
@@ -449,7 +485,6 @@ function isStrictPublicDescriptionLink(link: {
     label === "contact" ||
     label === "email me" ||
     label === "articles" ||
-    label === "amazon.com" ||
     label.startsWith("full review") ||
     label.startsWith("watch on youtube")
   ) {
@@ -1714,6 +1749,7 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
     : buildStrictPublicDescriptionLinks(article.links);
   const displayArticleLinks = orderDisplayLinksForArticle(
     article.slug,
+    article.title,
     sanitizePublicDisplayLinks(
       orderedVideoDescriptionLinks.length ? orderedVideoDescriptionLinks : fallbackArticleLinks,
     ),
