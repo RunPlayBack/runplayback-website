@@ -292,6 +292,7 @@ button {
 
 .home-hero-copy h1 {
   font-size: clamp(2rem, 4vw, 3.1rem);
+  font-weight: 800;
   line-height: 1.05;
   margin: 10px 0 18px;
 }
@@ -471,6 +472,7 @@ button {
 
 .home-metrics-copy h2 {
   font-size: clamp(1.45rem, 2.45vw, 2.45rem);
+  font-weight: 800;
   line-height: 1.08;
   margin: 0;
   max-width: 620px;
