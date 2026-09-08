@@ -11,7 +11,6 @@
     "popular-videos:update": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node scripts/update-popular-videos.mjs",
     "dev": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem next dev",
     "build": "next build",
-    "build:sites": "node scripts/build-sites-srt-maker.mjs",
     "start": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem next start",
     "lint": "next lint",
     "import:video-stills": "NODE_EXTRA_CA_CERTS=/opt/homebrew/etc/openssl@3/cert.pem node scripts/import-video-stills.mjs",
@@ -31,12 +30,9 @@
     "react-dom": "latest"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
-    "postcss": "^8.5.26",
-    "tailwindcss": "^4.3.3",
     "typescript": "latest"
   }
 }

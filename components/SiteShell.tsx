@@ -1,7 +1,4 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 const siteUrl = "https://runplayback.com";
 const siteDescription = "Real EV reviews. Smarter purchases.";
@@ -60,8 +57,6 @@ function SocialIcon({ platform }: { platform: SocialPlatform }) {
 }
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const isStandaloneTool = pathname === "/srt-maker";
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -96,10 +91,6 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
       },
     ],
   };
-
-  if (isStandaloneTool) {
-    return <>{children}</>;
-  }
 
   return (
     <>
