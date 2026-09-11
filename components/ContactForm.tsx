@@ -13,6 +13,8 @@ export function ContactForm({
   redirectPath = "/contact",
   sent,
 }: ContactFormProps) {
+  const startedAt = Date.now().toString();
+
   return (
     <>
       {sent ? (
@@ -22,9 +24,14 @@ export function ContactForm({
       <form action={sendContactMessage} className="contact-form">
         <input name="redirect_path" type="hidden" value={redirectPath} />
         <input name="form_context" type="hidden" value={formContext} />
+        <input name="started_at" type="hidden" value={startedAt} />
         <label className="contact-hidden-field">
           Website
           <input autoComplete="off" name="website" tabIndex={-1} />
+        </label>
+        <label className="contact-hidden-field">
+          Company URL
+          <input autoComplete="off" name="company_url" tabIndex={-1} />
         </label>
         <div className="name-grid">
           <label>
@@ -39,6 +46,19 @@ export function ContactForm({
         <label>
           Email
           <input autoComplete="email" name="email" type="email" required />
+        </label>
+        <label>
+          What is this about?
+          <select name="inquiry_type" required defaultValue="">
+            <option value="" disabled>
+              Select one
+            </option>
+            <option value="brand_partnership">Brand partnership</option>
+            <option value="product_review">Product review request</option>
+            <option value="media_inquiry">Media inquiry</option>
+            <option value="viewer_question">Viewer question</option>
+            <option value="other">Other</option>
+          </select>
         </label>
         <label>
           Subject

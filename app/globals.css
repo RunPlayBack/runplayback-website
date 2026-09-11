@@ -1102,6 +1102,7 @@ button {
 }
 
 .contact-form input,
+.contact-form select,
 .contact-form textarea {
   border: 1px solid var(--line);
   padding: 12px;
