@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getPublishedArticleSlugByVideoId } from "@/lib/articles";
 import { getPopularVideoByYouTubeId } from "@/lib/popular-videos";
 
 type PopularVideoDetailPageProps = {
@@ -113,7 +114,10 @@ export async function generateMetadata({
   params,
 }: PopularVideoDetailPageProps): Promise<Metadata> {
   const { id } = await params;
-  const video = await getPopularVideoByYouTubeId(id);
+  const [video, articleSlug] = await Promise.all([
+    getPopularVideoByYouTubeId(id),
+    getPublishedArticleSlugByVideoId(id),
+  ]);
 
   if (!video) {
     return {
@@ -126,6 +130,11 @@ export async function generateMetadata({
     description:
       video.description ||
       "Watch a featured RunPlayBack YouTube video about electric bikes, scooters, and EV lifestyle gear.",
+    alternates: {
+      canonical: articleSlug
+        ? `/articles/${articleSlug}`
+        : `/popularvideos/${video.youtubeVideoId}`,
+    },
     openGraph: {
       title: video.title,
       description: video.description,

@@ -593,3 +593,29 @@ export async function getPublishedArticleBySlug(slug: string) {
     videos,
   };
 }
+
+export async function getPublishedArticleSlugByVideoId(youtubeVideoId: string) {
+  const supabase = createAdminClient() || (await createClient());
+
+  if (!supabase) {
+    return (
+      mapPlaceholderArticles().find((article) =>
+        article.videos.some((video) => video.youtubeVideoId === youtubeVideoId),
+      )?.slug || null
+    );
+  }
+
+  const { data, error } = await supabase
+    .from("articles")
+    .select("slug,videos!inner(youtube_video_id)")
+    .eq("status", "published")
+    .eq("videos.youtube_video_id", youtubeVideoId)
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return String(data.slug || "") || null;
+}

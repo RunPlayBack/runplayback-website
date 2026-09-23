@@ -13,6 +13,7 @@ function read(path) {
 const redirectsSource = read("lib/redirects.ts");
 const sitemapSource = read("app/sitemap.ts");
 const articlePageSource = read("app/articles/[slug]/page.tsx");
+const popularVideoPageSource = read("app/popularvideos/[id]/page.tsx");
 const categoryPageSource = read("app/articles/categories/[category]/page.tsx");
 const adminLayoutSource = read("app/admin/layout.tsx");
 const searchPageSource = read("app/search/page.tsx");
@@ -35,6 +36,24 @@ check("redirects do not point to themselves", () =>
   redirectRules.every((rule) => rule.source !== rule.destination),
 );
 
+check("exact legacy article redirects precede the broad fallback", () => {
+  const fallbackIndex = redirectRules.findIndex(
+    (rule) => rule.source === "/new/:path*",
+  );
+  const exactArticleIndexes = redirectRules
+    .map((rule, index) => ({ rule, index }))
+    .filter(({ rule }) =>
+      /^\/new\/\d{4}\/\d+\/\d+\/.+/.test(rule.source),
+    )
+    .map(({ index }) => index);
+
+  return (
+    fallbackIndex >= 0 &&
+    exactArticleIndexes.length > 0 &&
+    exactArticleIndexes.every((index) => index < fallbackIndex)
+  );
+});
+
 check("sitemap does not include admin URLs", () =>
   !sitemapSource.includes('"/admin') && !sitemapSource.includes("'/admin"),
 );
@@ -54,6 +73,11 @@ check("sitemap filters low-count categories", () =>
 
 check("article pages define canonical URLs", () =>
   articlePageSource.includes("canonical: `/articles/${article.slug}`"),
+);
+
+check("popular video pages canonicalize to matching articles", () =>
+  popularVideoPageSource.includes("getPublishedArticleSlugByVideoId") &&
+  popularVideoPageSource.includes("canonical: articleSlug"),
 );
 
 check("missing article pages are noindex", () =>
