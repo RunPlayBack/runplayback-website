@@ -681,29 +681,83 @@ async function getVideoInfo(videoUrl, options) {
   return JSON.parse(output);
 }
 
-async function getDirectVideoUrl(videoUrl, options) {
+async function getDirectVideoSource(videoUrl, options) {
   const output = await runCommand("yt-dlp", [
-    "-g",
+    "--dump-single-json",
     "-f",
     "best[ext=mp4][height<=1080]/best[height<=1080]/best",
     "--no-warnings",
+    "--skip-download",
     "--no-playlist",
     ...getYtDlpAuthArgs(options),
     videoUrl,
   ]);
+  const info = JSON.parse(output);
+  const selectedFormat =
+    info.requested_downloads?.find((format) => format?.url) ||
+    info.requested_formats?.find((format) => format?.url) ||
+    info;
+  const url = selectedFormat.url || info.url;
 
-  return output.split("\n").find(Boolean) || output;
+  if (!url) {
+    throw new Error("yt-dlp did not return a playable video URL.");
+  }
+
+  return {
+    httpHeaders: selectedFormat.http_headers || info.http_headers || {},
+    url,
+  };
 }
 
-async function extractFrame({ directVideoUrl, outputPath, timestamp, zoom }) {
+function getFfmpegHttpArgs(videoSource) {
+  const headerEntries = Object.entries(videoSource.httpHeaders || {}).filter(
+    ([name, value]) =>
+      name &&
+      (typeof value === "string" || typeof value === "number") &&
+      !/[\r\n]/.test(name) &&
+      !/[\r\n]/.test(String(value)),
+  );
+  const userAgent = headerEntries.find(
+    ([name]) => name.toLowerCase() === "user-agent",
+  )?.[1];
+  const referer = headerEntries.find(
+    ([name]) => name.toLowerCase() === "referer",
+  )?.[1];
+  const remainingHeaders = headerEntries.filter(
+    ([name]) => !["referer", "user-agent"].includes(name.toLowerCase()),
+  );
+  const args = [];
+
+  if (userAgent) {
+    args.push("-user_agent", String(userAgent));
+  }
+
+  if (referer) {
+    args.push("-referer", String(referer));
+  }
+
+  if (remainingHeaders.length) {
+    args.push(
+      "-headers",
+      `${remainingHeaders
+        .map(([name, value]) => `${name}: ${value}`)
+        .join("\r\n")}\r\n`,
+    );
+  }
+
+  return args;
+}
+
+async function extractFrame({ videoSource, outputPath, timestamp, zoom }) {
   await runCommand("ffmpeg", [
     "-hide_banner",
     "-loglevel",
     "error",
+    ...getFfmpegHttpArgs(videoSource),
     "-ss",
     String(timestamp),
     "-i",
-    directVideoUrl,
+    videoSource.url,
     "-frames:v",
     "1",
     "-q:v",
@@ -714,15 +768,16 @@ async function extractFrame({ directVideoUrl, outputPath, timestamp, zoom }) {
   ]);
 }
 
-async function extractPreviewFrame({ directVideoUrl, timestamp, zoom }) {
+async function extractPreviewFrame({ videoSource, timestamp, zoom }) {
   return runCommandBuffer("ffmpeg", [
     "-hide_banner",
     "-loglevel",
     "error",
+    ...getFfmpegHttpArgs(videoSource),
     "-ss",
     String(timestamp),
     "-i",
-    directVideoUrl,
+    videoSource.url,
     "-frames:v",
     "1",
     "-vf",
@@ -737,12 +792,12 @@ async function extractPreviewFrame({ directVideoUrl, timestamp, zoom }) {
 
 async function chooseBestTimestamp({
   candidateCount,
-  directVideoUrl,
   duration,
   excludedTimestamps = [],
   minDistanceFromExcluded = 0,
   sampleWindow,
   timestamp,
+  videoSource,
   zoom,
 }) {
   const allCandidates = getCandidateTimestamps(
@@ -766,8 +821,8 @@ async function chooseBestTimestamp({
   for (const candidate of candidatePool) {
     try {
       const buffer = await extractPreviewFrame({
-        directVideoUrl,
         timestamp: candidate,
+        videoSource,
         zoom,
       });
       const score = scorePreviewFrame(buffer);
@@ -887,26 +942,26 @@ async function processArticle(supabase, article, options) {
     const videoInfo = await getVideoInfo(videoUrl, options);
     const duration = Number(videoInfo.duration || 0);
     const timestamps = getFrameTimestamps(duration, options.count);
-    const directVideoUrl = await getDirectVideoUrl(videoUrl, options);
+    const videoSource = await getDirectVideoSource(videoUrl, options);
     const extractedStills = [];
 
     for (const [index, timestamp] of timestamps.entries()) {
       const frameNumber = index + 1;
       const bestFrame = await chooseBestTimestamp({
         candidateCount: options.candidates,
-        directVideoUrl,
         duration,
         sampleWindow: options.sampleWindow,
         timestamp,
+        videoSource,
         zoom: options.zoom,
       });
       const fileName = `still-${String(frameNumber).padStart(2, "0")}.jpg`;
       const filePath = path.join(tempDir, fileName);
 
       await extractFrame({
-        directVideoUrl,
         outputPath: filePath,
         timestamp: bestFrame.timestamp,
+        videoSource,
         zoom: options.zoom,
       });
 
@@ -1036,15 +1091,15 @@ async function extractReplacementStill(supabase, article, stillIndex, options, j
       throw new Error("Could not calculate a timestamp for this still.");
     }
 
-    const directVideoUrl = await getDirectVideoUrl(videoUrl, options);
+    const videoSource = await getDirectVideoSource(videoUrl, options);
     const bestFrame = await chooseBestTimestamp({
       candidateCount: replacementCandidateCount,
-      directVideoUrl,
       duration,
       excludedTimestamps: existingTimestamps,
       minDistanceFromExcluded: 18,
       sampleWindow: replacementSampleWindow,
       timestamp,
+      videoSource,
       zoom: options.zoom,
     });
     const objectPath = getStillObjectPath(article, stillIndex, options);
@@ -1052,9 +1107,9 @@ async function extractReplacementStill(supabase, article, stillIndex, options, j
     const filePath = path.join(tempDir, fileName);
 
     await extractFrame({
-      directVideoUrl,
       outputPath: filePath,
       timestamp: bestFrame.timestamp,
+      videoSource,
       zoom: options.zoom,
     });
 
@@ -1080,7 +1135,7 @@ async function fetchQueuedStillJobs(supabase, limit, options) {
   let query = supabase
     .from("video_still_jobs")
     .select(
-      "id,still_index,articles(id,title,slug,content,status,published_at,videos(youtube_video_id,video_url,title))",
+      "id,still_index,articles!inner(id,title,slug,content,status,published_at,videos!inner(youtube_video_id,video_url,title))",
     )
     .order("created_at", { ascending: true })
     .limit(limit);

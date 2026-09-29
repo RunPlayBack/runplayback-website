@@ -41,6 +41,42 @@ function isMissingArchivedAtColumn(error: unknown) {
   );
 }
 
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
+async function getUniqueArticleSlug(
+  supabase: NonNullable<Awaited<ReturnType<typeof createClient>>>,
+  slug: string,
+) {
+  const baseSlug = slugify(slug) || `runplayback-review-${Date.now()}`;
+  let nextSlug = baseSlug;
+  let suffix = 2;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("articles")
+      .select("id")
+      .eq("slug", nextSlug)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data) {
+      return nextSlug;
+    }
+
+    nextSlug = `${baseSlug}-${suffix}`;
+    suffix += 1;
+  }
+}
+
 export async function addYouTubeVideo(formData: FormData) {
   const supabase = await createClient();
 
@@ -204,6 +240,22 @@ export async function generateDraftArticleFromVideo(videoId: string) {
     redirectWithError("/admin/videos", videoError || new Error("Video not found."));
   }
 
+  const { data: existingArticle, error: existingArticleError } = await supabase
+    .from("articles")
+    .select("id")
+    .eq("video_id", video.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingArticleError) {
+    redirectWithError("/admin/videos", existingArticleError);
+  }
+
+  if (existingArticle) {
+    redirect(`/admin/articles/${existingArticle.id}?saved=1`);
+  }
+
   let draft;
 
   try {
@@ -221,7 +273,16 @@ export async function generateDraftArticleFromVideo(videoId: string) {
     featuredImageUrl: video.thumbnail_url,
     youtubeVideoId: video.youtube_video_id,
   });
-  const slug = `${draft.slug}-${video.youtube_video_id}`;
+  let slug: string;
+
+  try {
+    slug = await getUniqueArticleSlug(
+      supabase,
+      `${draft.slug}-${video.youtube_video_id}`,
+    );
+  } catch (error) {
+    redirectWithError("/admin/videos", error);
+  }
 
   const { data: article, error: articleError } = await supabase
     .from("articles")
