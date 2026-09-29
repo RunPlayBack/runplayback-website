@@ -14,6 +14,7 @@ const defaultStillCount = 4;
 const defaultZoom = 1;
 const defaultCandidateCount = 5;
 const defaultSampleWindow = 60;
+const directVideoActivationDelayMs = 6000;
 const previewWidth = 160;
 const previewHeight = 90;
 
@@ -686,6 +687,8 @@ async function getDirectVideoSource(videoUrl, options) {
     "--dump-single-json",
     "-f",
     "best[ext=mp4][height<=1080]/best[height<=1080]/best",
+    "--extractor-args",
+    "youtube:player_client=mweb",
     "--no-warnings",
     "--skip-download",
     "--no-playlist",
@@ -702,6 +705,9 @@ async function getDirectVideoSource(videoUrl, options) {
   if (!url) {
     throw new Error("yt-dlp did not return a playable video URL.");
   }
+
+  console.log("Waiting for YouTube video stream...");
+  await sleep(directVideoActivationDelayMs);
 
   return {
     httpHeaders: selectedFormat.http_headers || info.http_headers || {},
