@@ -160,7 +160,7 @@ function selectSourceImages(
   articleType: BuyingGuideArticleType,
   orderedRows: SourceArticleRow[],
 ) {
-  const imagesPerSource = articleType === "versus" ? 2 : 1;
+  const imagesPerSource = 1;
 
   return orderedRows.flatMap((row) =>
     extractArticleImages(row).slice(0, imagesPerSource),
@@ -268,7 +268,13 @@ export async function generateComparisonBuyingGuide(formData: FormData) {
       url: image.url,
     })),
   );
-  const resolvedCategorySlug = categorySlug || orderedRows[0]?.category_slug || null;
+  const sourceCategories = [...new Set(orderedRows.map((row) => row.category_slug).filter(Boolean))];
+  const bikeCategories = new Set(["electric-bikes", "electric-dirt-bikes", "mini-electric-dirt-bikes"]);
+  const resolvedCategorySlug = categorySlug || (sourceCategories.length === 1
+    ? sourceCategories[0]
+    : sourceCategories.length > 1 && sourceCategories.every((slug) => bikeCategories.has(slug!))
+      ? "electric-bikes"
+      : null);
   const resolvedCategoryLabel = getCategoryLabel(resolvedCategorySlug) || "";
   const resolvedTitle = title || makeAutomaticTitle(articleType, resolvedCategorySlug, orderedRows);
 

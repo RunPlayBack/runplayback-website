@@ -144,18 +144,15 @@ Strong title examples:
 - The High Powered Pedal eBike Results Are In: EKX21 Max vs Jasion Patrol
 - Valtinsu EM5 and Valtinsu EM5 Pro Hands-On Comparison
 
-Required structure:
-- Hook: Start with the buying decision, not background filler. Do not use a heading for the hook.
-- First Impressions
-- Power & Acceleration
-- Comfort
-- Handling
-- Features
-For each comparison section above, discuss every selected product with available evidence and compare the meaningful differences across the entire field. Do not simply concatenate standalone reviews.
-- Winner by Category: weigh every selected product, explain tradeoffs, and name a winner or tie only when supported by comparable source evidence. Acknowledge missing evidence instead of treating it as a loss.
-- Who Should Buy [Product Name]: a separate section for EVERY selected product
-- Final Verdict
-- Related Reviews`;
+Required structure (use ## for main sections and ### for product or topic subsections):
+- Opening: a short buying-decision hook without a heading.
+- ## Quick Verdict: one concise buyer-fit sentence per selected product.
+- ## Meet the Bikes (or an accurate shared product name): one ### [Product Name] subsection per selected product in source order. Put its single matching image placeholder immediately AFTER that product heading, followed by a short description, main strength, and main compromise. Use only images belonging to that product. Do not place images anywhere else.
+- ## How They Compare: ### Power & Acceleration, ### Comfort, ### Wheelie Assist when relevant, ### Handling, and ### Features when useful. Each topic should synthesize meaningful differences across the full group in concise paragraphs; do not repeat separate mini reviews of every bike. Name a winner or tie only with comparable supporting evidence and acknowledge gaps.
+- ## Which Should You Buy?: one short buyer recommendation for every selected product, organized by rider needs.
+- ## Final Verdict: a brief decision summary.
+- ## Related Reviews
+Keep the product category accurate across mixed sources. Use a neutral shared term such as mini electric bikes when source categories differ; do not classify every product as a dirt bike just because one is.`;
   }
 
   return `Create a Best Of buying guide article where every selected product earns a clear reason to exist.
@@ -210,6 +207,7 @@ ${trimSourceContent(source.content)}`;
 function replaceImagePlaceholders(
   content: string,
   images: BuyingGuideSourceImage[],
+  preservePlacement = false,
 ) {
   let nextContent = content;
 
@@ -222,6 +220,8 @@ function replaceImagePlaceholders(
     .replace(/\[\[IMAGE:[^\]]+]]/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+
+  if (preservePlacement) return nextContent;
 
   const missingImages = images.filter((image) => !nextContent.includes(image.url));
 
@@ -355,7 +355,7 @@ Rules:
 - Use available image placeholders as article stills from the source reviews.
 - Distribute image placeholders evenly and intentionally throughout the article body.
 - Do not place image placeholders in the introduction, inside a paragraph, in Related Reviews, or below Related Reviews.
-- Put each image placeholder on its own line directly before a relevant section heading or product subsection.
+- Put each image placeholder on its own line. For Versus, put it directly after its matching product heading in Meet the Bikes; for Best Of, use the relevant product section.
 - Prefer using every available image placeholder when it helps the article, but never reuse one.
 - Keep image placeholders on their own line.
 - Do not use the same image placeholder more than once.
@@ -417,6 +417,7 @@ ${buildSourceMaterial(sources, images)}`;
     content: replaceImagePlaceholders(
       parsed.content || `Introduction\n\nDraft article for ${resolvedTitle}.`,
       images,
+      articleType === "versus",
     ),
   };
 }

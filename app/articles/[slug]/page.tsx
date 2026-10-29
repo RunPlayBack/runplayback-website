@@ -23,6 +23,7 @@ type ArticlePageProps = {
 };
 
 type ArticleBlock = {
+  headingLevel?: number;
   alt?: string;
   className?: string;
   href?: string;
@@ -1059,6 +1060,7 @@ function buildArticleBlocks(
   fallbackImageUrl = "",
   youtubeVideoId = "",
   inlineLinks: Array<{ label: string; url: string }> = [],
+  explicitHeadingsOnly = false,
 ): ArticleBlock[] {
   const blocks: ArticleBlock[] = [];
   let activeHeading = "";
@@ -1117,7 +1119,7 @@ function buildArticleBlocks(
       (Boolean(headingMatch) &&
         !containsUrl(displayLine) &&
         !shouldDemoteMarkdownHeading(trimmed)) ||
-      (!isGeneratedLinksLine && isImplicitHeading(trimmed));
+      (!explicitHeadingsOnly && !isGeneratedLinksLine && isImplicitHeading(trimmed));
     const heading = stripMarkdownHeading(trimmed);
 
     if (isBrokenMarkdownImageStart(trimmed) && !imageMatch) {
@@ -1140,6 +1142,7 @@ function buildArticleBlocks(
         key: `${heading}-${index}`,
         text: normalizeFirstPersonVoice(heading),
         type: "heading",
+        headingLevel: trimmed.startsWith("### ") ? 3 : 2,
       });
       return;
     }
@@ -1759,22 +1762,13 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
     article.featuredImageUrl,
     article.video?.youtubeVideoId,
     displayArticleLinks,
+    isComparisonArticle,
   );
-  const articleBlocksWithFallback = isVersusArticle(article)
-    ? rawArticleBlocks.filter((block) => block.type !== "image")
-    : addFallbackArticleImage(
-        rawArticleBlocks,
-        article.slug,
-        article.video?.youtubeVideoId,
-        article.title,
-      );
-  const versusSourceVideoStillBlocks = getVersusSourceVideoStillBlocks(article);
-  const articleBlocks = isComparisonArticle
-    ? reflowVersusVideoStillBlocks([
-        ...articleBlocksWithFallback,
-        ...versusSourceVideoStillBlocks,
-      ])
-    : articleBlocksWithFallback;
+  const articleBlocksWithFallback = isComparisonArticle
+    ? rawArticleBlocks
+    : addFallbackArticleImage(rawArticleBlocks, article.slug, article.video?.youtubeVideoId, article.title);
+  // Comparison images belong to the authored product sections, never global spacing.
+  const articleBlocks = articleBlocksWithFallback;
   const hasAffiliateLinks = displayArticleLinks.some((link) =>
     isAffiliateEligibleUrl(link.url),
   );
@@ -1910,7 +1904,7 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
       />
       <article className="legacy-page">
         <div className="page-kicker article-kicker">
-          <span>Review</span>
+          <span>{isVersusArticle(article) ? "Versus" : isComparisonArticle ? "Buying Guide" : "Review"}</span>
         </div>
         <Link
           className="article-kicker-category"
@@ -1947,7 +1941,9 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
 
             if (block.type === "heading") {
               renderedBlock = (
-                <h2 key={block.key}>
+                block.headingLevel === 3 ? <h3 key={block.key}>
+                  {renderInlineText(block.text, `heading-${index}`)}
+                </h3> : <h2 key={block.key}>
                   {renderInlineText(block.text, `heading-${index}`)}
                 </h2>
               );
@@ -1974,6 +1970,7 @@ export default async function ArticleDetailPage({ params }: ArticlePageProps) {
               renderedBlock = (
                 <figure className="article-inline-image" key={block.key}>
                   <img src={block.src} alt={block.alt || ""} />
+                  {isComparisonArticle && block.alt ? <figcaption>{block.alt}</figcaption> : null}
                 </figure>
               );
             } else {
