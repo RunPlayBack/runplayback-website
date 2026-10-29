@@ -1,3 +1,4 @@
+import { FeaturedImageInput } from "@/components/FeaturedImageInput";
 import { notFound } from "next/navigation";
 import { AdminLayout } from "@/components/AdminLayout";
 import { articleCategories, getArticleCategory } from "@/lib/article-categories";
@@ -213,11 +214,7 @@ export default async function AdminArticleEditorPage({
           )}
           <label>
             Upload featured image
-            <input
-              accept="image/jpeg,image/png,image/webp"
-              name="featured_image_file"
-              type="file"
-            />
+            <FeaturedImageInput />
           </label>
           <button
             className="button secondary-button"

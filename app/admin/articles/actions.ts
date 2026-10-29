@@ -16,7 +16,7 @@ function getString(formData: FormData, key: string) {
 
 const articleUploadBucket =
   process.env.SUPABASE_ARTICLE_UPLOAD_BUCKET || "article-stills";
-const maxFeaturedImageSize = 8 * 1024 * 1024;
+const maxFeaturedImageSize = 3 * 1024 * 1024;
 const allowedFeaturedImageTypes = new Set([
   "image/jpeg",
   "image/png",
@@ -24,7 +24,7 @@ const allowedFeaturedImageTypes = new Set([
 ]);
 
 function redirectWithError(path: string, error: unknown): never {
-  const message = error instanceof Error ? error.message : "Unable to save changes.";
+  const message = error instanceof Error ? error.message : error && typeof error === "object" && "message" in error ? String(error.message) : "Unable to save changes.";
   redirect(`${path}?error=${encodeURIComponent(message)}`);
 }
 
@@ -275,7 +275,7 @@ export async function uploadFeaturedImage(articleId: string, formData: FormData)
   if (file.size > maxFeaturedImageSize) {
     redirectWithError(
       `/admin/articles/${articleId}`,
-      new Error("Upload an image smaller than 8 MB."),
+      new Error("Upload an image smaller than 3 MB. Large images should be resized automatically; try choosing the file again."),
     );
   }
 
