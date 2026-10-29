@@ -93,7 +93,7 @@ function makeAutomaticTitle(
   rows: SourceArticleRow[],
 ) {
   if (articleType === "versus" && rows.length >= 2) {
-    return `${shortenTitle(rows[0].title)} vs ${shortenTitle(rows[1].title)}: We Tested Both`;
+    return `${rows.map((row) => shortenTitle(row.title)).join(" vs ")}: Which Should You Buy?`;
   }
 
   const categoryLabel = getCategoryLabel(categorySlug);
@@ -214,8 +214,8 @@ export async function generateComparisonBuyingGuide(formData: FormData) {
     redirectWithError(new Error("Choose Best Of or Versus."));
   }
 
-  if (articleType === "versus" && selectedIds.length !== 2) {
-    redirectWithError(new Error("Versus drafts need exactly two source reviews."));
+  if (articleType === "versus" && selectedIds.length < 2) {
+    redirectWithError(new Error("Versus drafts need at least two source reviews."));
   }
 
   if (articleType === "best_of" && selectedIds.length < 2) {

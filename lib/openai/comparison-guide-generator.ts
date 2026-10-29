@@ -134,7 +134,9 @@ function trimSourceContent(content: string) {
 
 function getArticleTypeInstructions(articleType: BuyingGuideArticleType) {
   if (articleType === "versus") {
-    return `Create a Versus comparison article that answers the search intent: "X vs Y — which one should I buy?"
+    return `Create a Versus comparison article that answers the search intent: "Which of these selected products should I buy?"
+
+Compare ALL selected products, whether there are two, three, or more. Do not reduce a multi-product comparison to a pair. Use the supplied source order for presentation, not as a ranking. For three or more products, use a multi-way comparison title naming the products or their shared category and count; never say "both" or imply only two bikes were tested.
 
 Strong title examples:
 - Jasion Patrol vs SASIKEIBIKE Y7: Which Fat Tire eBike Makes More Sense?
@@ -149,9 +151,9 @@ Required structure:
 - Comfort
 - Handling
 - Features
-- Winner by Category
-- Who Should Buy [Product A]
-- Who Should Buy [Product B]
+For each comparison section above, discuss every selected product with available evidence and compare the meaningful differences across the entire field. Do not simply concatenate standalone reviews.
+- Winner by Category: weigh every selected product, explain tradeoffs, and name a winner or tie only when supported by comparable source evidence. Acknowledge missing evidence instead of treating it as a loss.
+- Who Should Buy [Product Name]: a separate section for EVERY selected product
 - Final Verdict
 - Related Reviews`;
   }
@@ -315,6 +317,8 @@ ${title}
 
 Selected category:
 ${categoryLabel || "Mixed / uncategorized"}
+
+Selected source count: ${sources.length}. Include every selected product.
 
 ${getArticleTypeInstructions(articleType)}
 

@@ -245,8 +245,8 @@ export default async function GenerateArticlePage({
         </div>
         <div className="generator-help">
           <p>
-            For Best Of, select two or more reviews. For Versus, select exactly
-            two reviews. Use the order field to control ranking or comparison
+            For Best Of or Versus, select two or more reviews. Versus compares
+            all selected products. Use the order field to control ranking or comparison
             order.
           </p>
           <p>
