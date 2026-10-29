@@ -3,7 +3,7 @@ import { AdminLayout } from "@/components/AdminLayout";
 import { articleCategories, getArticleCategory } from "@/lib/article-categories";
 import type { PublicArticle } from "@/lib/articles";
 import { createClient } from "@/lib/supabase/server";
-import { generateComparisonBuyingGuide } from "./actions";
+import { GeneratorForm } from "@/components/GeneratorForm";
 
 type GenerateArticlePageProps = {
   searchParams?: Promise<{
@@ -228,7 +228,7 @@ export default async function GenerateArticlePage({
           </Link>
         </div>
       </form>
-      <form action={generateComparisonBuyingGuide} className="admin-card form generator-form">
+      <GeneratorForm>
         <input name="category_slug" type="hidden" value={selectedCategory} />
         <div className="generator-grid">
           <label>
@@ -261,7 +261,7 @@ export default async function GenerateArticlePage({
                 <div className="source-article-header">
                   <label className="source-select source-select-compact">
                     <input
-                      name="source_article_ids"
+                      name="visible_source_article_ids"
                       type="checkbox"
                       value={article.id}
                     />
@@ -282,7 +282,7 @@ export default async function GenerateArticlePage({
                     aria-label={`Order for ${article.title}`}
                     className="source-order"
                     min="1"
-                    name={`order_${article.id}`}
+                    name={`visible_order_${article.id}`}
                     type="number"
                     defaultValue={(currentPage - 1) * ARTICLES_PER_PAGE + index + 1}
                   />
@@ -319,7 +319,7 @@ export default async function GenerateArticlePage({
             Generate Draft
           </button>
         </div>
-      </form>
+      </GeneratorForm>
     </AdminLayout>
   );
 }
